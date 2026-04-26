@@ -806,6 +806,13 @@ export function FurnitureClient({ initialItems, parts, extraParts, costs, laborC
                             </TableCell>
                           </TableRow>
                         ))}
+                        {formData.extraParts.length === 0 && (
+                          <TableRow>
+                            <TableCell colSpan={5} className="text-center py-4 text-muted-foreground text-sm">
+                              Sin herrajes configurados. Haga clic en Agregar Item.
+                            </TableCell>
+                          </TableRow>
+                        )}
                       </TableBody>
                     </Table>
                   </div>
@@ -868,6 +875,13 @@ export function FurnitureClient({ initialItems, parts, extraParts, costs, laborC
                             </TableCell>
                           </TableRow>
                         ))}
+                        {formData.costs.length === 0 && (
+                          <TableRow>
+                            <TableCell colSpan={5} className="text-center py-4 text-muted-foreground text-sm">
+                              Sin acabados configurados. Haga clic en Agregar Acabado.
+                            </TableCell>
+                          </TableRow>
+                        )}
                       </TableBody>
                     </Table>
                   </div>
@@ -930,6 +944,13 @@ export function FurnitureClient({ initialItems, parts, extraParts, costs, laborC
                             </TableCell>
                           </TableRow>
                         ))}
+                        {formData.laborCosts.length === 0 && (
+                          <TableRow>
+                            <TableCell colSpan={5} className="text-center py-4 text-muted-foreground text-sm">
+                              Sin mano de obra configurada. Haga clic en Agregar Mano de Obra.
+                            </TableCell>
+                          </TableRow>
+                        )}
                       </TableBody>
                     </Table>
                   </div>
@@ -992,6 +1013,13 @@ export function FurnitureClient({ initialItems, parts, extraParts, costs, laborC
                             </TableCell>
                           </TableRow>
                         ))}
+                        {formData.additionalCosts.length === 0 && (
+                          <TableRow>
+                            <TableCell colSpan={5} className="text-center py-4 text-muted-foreground text-sm">
+                              Sin extras configurados. Haga clic en Agregar Extra.
+                            </TableCell>
+                          </TableRow>
+                        )}
                       </TableBody>
                     </Table>
                   </div>
@@ -1011,13 +1039,13 @@ export function FurnitureClient({ initialItems, parts, extraParts, costs, laborC
       <div className="rounded-md border bg-card overflow-x-auto">
         <Table>
           <TableHeader>
-            <TableRow className="bg-muted/50">
+            <TableRow className="bg-muted/50 text-xs">
               <TableHead 
-                className="cursor-pointer hover:text-primary transition-colors font-bold"
+                className="cursor-pointer hover:text-primary transition-colors font-bold w-20"
                 onClick={() => requestSort('code')}
               >
                 <div className="flex items-center">
-                  Código <SortIcon columnKey="code" />
+                  Cód. <SortIcon columnKey="code" />
                 </div>
               </TableHead>
               <TableHead 
@@ -1028,17 +1056,17 @@ export function FurnitureClient({ initialItems, parts, extraParts, costs, laborC
                   Nombre <SortIcon columnKey="name" />
                 </div>
               </TableHead>
-              <TableHead className="font-bold text-center">Dimensiones (L x A x P)</TableHead>
+              <TableHead className="font-bold text-center w-32">Dim. (L×A×P)</TableHead>
               <TableHead 
-                className="cursor-pointer hover:text-primary transition-colors font-bold text-right"
+                className="cursor-pointer hover:text-primary transition-colors font-bold text-right w-24"
                 onClick={() => requestSort('furniturePrice')}
               >
                 <div className="flex items-center justify-end">
-                  Precio Mueble <SortIcon columnKey="furniturePrice" />
+                  Mueble <SortIcon columnKey="furniturePrice" />
                 </div>
               </TableHead>
               <TableHead 
-                className="cursor-pointer hover:text-primary transition-colors font-bold text-right"
+                className="cursor-pointer hover:text-primary transition-colors font-bold text-right w-24"
                 onClick={() => requestSort('hardwarePrice')}
               >
                 <div className="flex items-center justify-end">
@@ -1046,7 +1074,7 @@ export function FurnitureClient({ initialItems, parts, extraParts, costs, laborC
                 </div>
               </TableHead>
               <TableHead 
-                className="cursor-pointer hover:text-primary transition-colors font-bold text-right"
+                className="cursor-pointer hover:text-primary transition-colors font-bold text-right w-24"
                 onClick={() => requestSort('costPrice')}
               >
                 <div className="flex items-center justify-end">
@@ -1054,15 +1082,15 @@ export function FurnitureClient({ initialItems, parts, extraParts, costs, laborC
                 </div>
               </TableHead>
               <TableHead 
-                className="cursor-pointer hover:text-primary transition-colors font-bold text-right"
+                className="cursor-pointer hover:text-primary transition-colors font-bold text-right w-24"
                 onClick={() => requestSort('laborPrice')}
               >
                 <div className="flex items-center justify-end">
-                  Mano de Obra <SortIcon columnKey="laborPrice" />
+                  M. Obra <SortIcon columnKey="laborPrice" />
                 </div>
               </TableHead>
               <TableHead 
-                className="cursor-pointer hover:text-primary transition-colors font-bold text-right"
+                className="cursor-pointer hover:text-primary transition-colors font-bold text-right w-24"
                 onClick={() => requestSort('additionalPrice')}
               >
                 <div className="flex items-center justify-end">
@@ -1070,15 +1098,15 @@ export function FurnitureClient({ initialItems, parts, extraParts, costs, laborC
                 </div>
               </TableHead>
               <TableHead 
-                className="cursor-pointer hover:text-primary transition-colors font-bold text-right"
+                className="cursor-pointer hover:text-primary transition-colors font-bold text-right w-28"
                 onClick={() => requestSort('furnitureTotal')}
               >
                 <div className="flex items-center justify-end">
                   Total <SortIcon columnKey="furnitureTotal" />
                 </div>
               </TableHead>
-              <TableHead className="font-bold text-center">Config.</TableHead>
-              <TableHead className="text-right font-bold">Acciones</TableHead>
+              <TableHead className="font-bold text-center w-24">Config.</TableHead>
+              <TableHead className="text-right font-bold w-20">Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -1090,37 +1118,37 @@ export function FurnitureClient({ initialItems, parts, extraParts, costs, laborC
               </TableRow>
             ) : (
               paginatedItems.map((item) => (
-                <TableRow key={item.id} className="hover:bg-muted/50 transition-colors">
-                  <TableCell className="font-mono text-xs uppercase">{item.code}</TableCell>
-                  <TableCell className="font-medium">{item.name}</TableCell>
-                  <TableCell className="text-center text-sm">
-                    {item.length} x {item.width} x {item.depth} <span className="text-[10px] text-muted-foreground">mm</span>
+                <TableRow key={item.id} className="hover:bg-muted/50 transition-colors text-xs">
+                  <TableCell className="font-mono text-xs uppercase py-2">{item.code}</TableCell>
+                  <TableCell className="font-medium py-2 max-w-[140px] truncate" title={item.name}>{item.name}</TableCell>
+                  <TableCell className="text-center text-xs py-2 whitespace-nowrap">
+                    {item.length}×{item.width}×{item.depth}
                   </TableCell>
-                  <TableCell className="text-right font-semibold text-primary">
-                    $ {Number(item.furniturePrice).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  <TableCell className="text-right font-semibold text-primary py-2 whitespace-nowrap">
+                    $ {Number(item.furniturePrice).toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                   </TableCell>
-                  <TableCell className="text-right font-medium text-orange-600">
-                    $ {Number(item.hardwarePrice).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  <TableCell className="text-right font-medium text-orange-600 py-2 whitespace-nowrap">
+                    $ {Number(item.hardwarePrice).toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                   </TableCell>
-                  <TableCell className="text-right font-medium text-green-600">
-                    $ {Number(item.costPrice).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  <TableCell className="text-right font-medium text-green-600 py-2 whitespace-nowrap">
+                    $ {Number(item.costPrice).toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                   </TableCell>
-                  <TableCell className="text-right font-medium text-blue-600">
-                    $ {Number(item.laborPrice || 0).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  <TableCell className="text-right font-medium text-blue-600 py-2 whitespace-nowrap">
+                    $ {Number(item.laborPrice || 0).toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                   </TableCell>
-                  <TableCell className="text-right font-medium text-purple-600">
-                    $ {Number(item.additionalPrice || 0).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  <TableCell className="text-right font-medium text-purple-600 py-2 whitespace-nowrap">
+                    $ {Number(item.additionalPrice || 0).toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                   </TableCell>
-                  <TableCell className="text-right font-bold text-primary">
-                    $ {Number(item.furnitureTotal).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  <TableCell className="text-right font-bold text-primary py-2 whitespace-nowrap">
+                    $ {Number(item.furnitureTotal).toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                   </TableCell>
-                  <TableCell className="text-center">
-                    <div className="flex justify-center gap-1">
-                      <span className="bg-blue-100 text-blue-700 text-[10px] px-1.5 py-0.5 rounded-full" title="Piezas">{item.parts.length} P</span>
-                      <span className="bg-orange-100 text-orange-700 text-[10px] px-1.5 py-0.5 rounded-full" title="Herrajes">{item.extraParts.length} H</span>
-                      <span className="bg-green-100 text-green-700 text-[10px] px-1.5 py-0.5 rounded-full" title="Acabados">{item.costs.length} A</span>
-                      <span className="bg-blue-100 text-blue-700 text-[10px] px-1.5 py-0.5 rounded-full" title="Mano de Obra">{item.laborCosts ? item.laborCosts.length : 0} M</span>
-                      <span className="bg-purple-100 text-purple-700 text-[10px] px-1.5 py-0.5 rounded-full" title="Extras">{item.additionalCosts ? item.additionalCosts.length : 0} E</span>
+                  <TableCell className="text-center py-2">
+                    <div className="flex justify-center gap-0.5">
+                      <span className="bg-blue-100 text-blue-700 text-[9px] px-1 py-0.5 rounded-full" title="Piezas">{item.parts.length}P</span>
+                      <span className="bg-orange-100 text-orange-700 text-[9px] px-1 py-0.5 rounded-full" title="Herrajes">{item.extraParts.length}H</span>
+                      <span className="bg-green-100 text-green-700 text-[9px] px-1 py-0.5 rounded-full" title="Acabados">{item.costs.length}A</span>
+                      <span className="bg-blue-100 text-blue-700 text-[9px] px-1 py-0.5 rounded-full" title="Mano de Obra">{item.laborCosts ? item.laborCosts.length : 0}M</span>
+                      <span className="bg-purple-100 text-purple-700 text-[9px] px-1 py-0.5 rounded-full" title="Extras">{item.additionalCosts ? item.additionalCosts.length : 0}E</span>
                     </div>
                   </TableCell>
                   <TableCell className="text-right">

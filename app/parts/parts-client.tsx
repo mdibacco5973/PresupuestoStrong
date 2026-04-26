@@ -194,13 +194,24 @@ export function PartsClient({ initialParts }: PartsClientProps) {
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <div className="flex w-full max-w-sm items-center space-x-2">
+        <div className="relative flex w-full max-w-sm items-center">
           <Input 
             placeholder="Buscar piezas..." 
-            className="max-w-sm" 
+            className="max-w-sm pr-8" 
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
+          {searchTerm && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute right-0 top-0 h-9 w-9 text-muted-foreground hover:text-foreground hover:bg-transparent"
+              onClick={() => setSearchTerm('')}
+              title="Borrar búsqueda"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          )}
         </div>
         <Dialog open={isOpen} onOpenChange={handleOpenChange}>
           <DialogTrigger
@@ -340,18 +351,18 @@ export function PartsClient({ initialParts }: PartsClientProps) {
       <div className="rounded-md border overflow-x-auto">
         <Table>
           <TableHeader>
-            <TableRow>
+            <TableRow className="bg-muted/50 text-xs">
               <TableHead 
-                className="cursor-pointer hover:text-primary transition-colors"
+                className="cursor-pointer hover:text-primary transition-colors font-bold"
                 onClick={() => requestSort('name')}
               >
                 <div className="flex items-center">
                   Nombre <SortIcon columnKey="name" />
                 </div>
               </TableHead>
-              <TableHead>Atributos</TableHead>
-              <TableHead>Fórmulas (L x A)</TableHead>
-              <TableHead className="text-right">Acciones</TableHead>
+              <TableHead className="font-bold">Atributos</TableHead>
+              <TableHead className="font-bold">Fórmulas (L × A)</TableHead>
+              <TableHead className="text-right font-bold w-20">Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -363,10 +374,10 @@ export function PartsClient({ initialParts }: PartsClientProps) {
               </TableRow>
             ) : (
               paginatedParts.map((part) => (
-                <TableRow key={part.id}>
-                  <TableCell className="font-medium">{part.name}</TableCell>
-                  <TableCell>
-                    <div className="flex flex-wrap gap-1 mt-1">
+                <TableRow key={part.id} className="hover:bg-muted/50 transition-colors text-xs">
+                  <TableCell className="font-medium py-2">{part.name}</TableCell>
+                  <TableCell className="py-2">
+                    <div className="flex flex-wrap gap-1">
                       <FlagBadge active={part.isEdges} label="Cantos" />
                       <FlagBadge active={part.isCabinetWood} label="Cuerpo" />
                       <FlagBadge active={part.isBaseCabinetWood} label="Bajo Mesada" />
@@ -376,27 +387,17 @@ export function PartsClient({ initialParts }: PartsClientProps) {
                       <FlagBadge active={part.isLacquered} label="Laqueado" />
                     </div>
                   </TableCell>
-                  <TableCell className="text-xs font-mono">
+                  <TableCell className="text-xs font-mono py-2">
                     <div className="flex flex-col">
                       <span>L: {part.formulaLength || '-'}</span>
                       <span>A: {part.formulaWidth || '-'}</span>
                     </div>
                   </TableCell>
-                  <TableCell className="text-right">
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      onClick={() => handleEdit(part)}
-                      className="mr-2"
-                    >
+                  <TableCell className="text-right py-2">
+                    <Button variant="ghost" size="icon-sm" onClick={() => handleEdit(part)} className="mr-2">
                       <Pencil className="h-4 w-4" />
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      onClick={() => handleDelete(part.id)}
-                      className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                    >
+                    <Button variant="ghost" size="icon-sm" onClick={() => handleDelete(part.id)} className="text-destructive hover:bg-destructive/10 hover:text-destructive">
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </TableCell>

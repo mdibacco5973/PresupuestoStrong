@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Plus, Pencil, Trash2, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Plus, Pencil, Trash2, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { ClientInput, createClient, updateClient, deleteClient } from '@/app/actions/client'
 
 import { Button } from '@/components/ui/button'
@@ -172,10 +172,21 @@ export function ClientsClient({ initialClients }: ClientsClientProps) {
         <div className="relative w-72">
           <Input 
             placeholder="Buscar clientes..." 
-            className="max-w-sm" 
+            className="max-w-sm pr-8" 
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
+          {searchTerm && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute right-0 top-0 h-9 w-9 text-muted-foreground hover:text-foreground hover:bg-transparent"
+              onClick={() => setSearchTerm('')}
+              title="Borrar búsqueda"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          )}
         </div>
         <Dialog open={isOpen} onOpenChange={handleOpenChange}>
           <DialogTrigger
@@ -232,40 +243,20 @@ export function ClientsClient({ initialClients }: ClientsClientProps) {
         <Table>
 
           <TableHeader>
-            <TableRow className="bg-muted/50">
-              <TableHead 
-                className="cursor-pointer hover:text-primary transition-colors font-bold"
-                onClick={() => requestSort('name')}
-              >
-                <div className="flex items-center">
-                  Nombre <SortIcon columnKey="name" />
-                </div>
+            <TableRow className="bg-muted/50 text-xs">
+              <TableHead className="cursor-pointer hover:text-primary transition-colors font-bold" onClick={() => requestSort('name')}>
+                <div className="flex items-center">Nombre <SortIcon columnKey="name" /></div>
               </TableHead>
-              <TableHead 
-                className="cursor-pointer hover:text-primary transition-colors font-bold"
-                onClick={() => requestSort('email')}
-              >
-                <div className="flex items-center">
-                  Email <SortIcon columnKey="email" />
-                </div>
+              <TableHead className="cursor-pointer hover:text-primary transition-colors font-bold" onClick={() => requestSort('email')}>
+                <div className="flex items-center">Email <SortIcon columnKey="email" /></div>
               </TableHead>
-              <TableHead 
-                className="cursor-pointer hover:text-primary transition-colors font-bold"
-                onClick={() => requestSort('phone')}
-              >
-                <div className="flex items-center">
-                  Teléfono <SortIcon columnKey="phone" />
-                </div>
+              <TableHead className="cursor-pointer hover:text-primary transition-colors font-bold w-32" onClick={() => requestSort('phone')}>
+                <div className="flex items-center">Teléfono <SortIcon columnKey="phone" /></div>
               </TableHead>
-              <TableHead 
-                className="cursor-pointer hover:text-primary transition-colors font-bold"
-                onClick={() => requestSort('updatedAt')}
-              >
-                <div className="flex items-center">
-                  Última Actualización <SortIcon columnKey="updatedAt" />
-                </div>
+              <TableHead className="cursor-pointer hover:text-primary transition-colors font-bold w-32" onClick={() => requestSort('updatedAt')}>
+                <div className="flex items-center">ÚIt. Actualiz. <SortIcon columnKey="updatedAt" /></div>
               </TableHead>
-              <TableHead className="text-right font-bold">Acciones</TableHead>
+              <TableHead className="text-right font-bold w-20">Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -277,29 +268,17 @@ export function ClientsClient({ initialClients }: ClientsClientProps) {
               </TableRow>
             ) : (
               paginatedClients.map((client) => (
-                <TableRow key={client.id} className="hover:bg-muted/50 transition-colors">
-                  <TableCell className="font-medium">{client.name || '-'}</TableCell>
-                  <TableCell>{client.email || '-'}</TableCell>
-                  <TableCell>{client.phone}</TableCell>
-                  <TableCell>
-                    {new Date(client.updatedAt).toLocaleDateString('es-AR')}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleEdit(client)}
-                        className="h-8 w-8 text-muted-foreground hover:text-primary"
-                      >
+                <TableRow key={client.id} className="hover:bg-muted/50 transition-colors text-xs">
+                  <TableCell className="font-medium py-2">{client.name || '-'}</TableCell>
+                  <TableCell className="py-2">{client.email || '-'}</TableCell>
+                  <TableCell className="py-2">{client.phone}</TableCell>
+                  <TableCell className="py-2">{new Date(client.updatedAt).toLocaleDateString('es-AR')}</TableCell>
+                  <TableCell className="text-right py-2">
+                    <div className="flex justify-end gap-1">
+                      <Button variant="ghost" size="icon" onClick={() => handleEdit(client)} className="h-8 w-8 text-muted-foreground hover:text-primary">
                         <Pencil className="h-4 w-4" />
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDelete(client.id)}
-                        className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                      >
+                      <Button variant="ghost" size="icon" onClick={() => handleDelete(client.id)} className="h-8 w-8 text-muted-foreground hover:text-destructive">
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>

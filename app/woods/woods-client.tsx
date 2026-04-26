@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Plus, Pencil, Trash2, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Plus, Pencil, Trash2, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { WoodInput, createWood, updateWood, deleteWood } from '@/app/actions/wood'
 
 import { Button } from '@/components/ui/button'
@@ -232,10 +232,21 @@ export function WoodsClient({ initialWoods }: WoodsClientProps) {
         <div className="relative w-72">
           <Input 
             placeholder="Buscar maderas..." 
-            className="max-w-sm" 
+            className="max-w-sm pr-8" 
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
+          {searchTerm && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute right-0 top-0 h-9 w-9 text-muted-foreground hover:text-foreground hover:bg-transparent"
+              onClick={() => setSearchTerm('')}
+              title="Borrar búsqueda"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          )}
         </div>
         <Dialog open={isOpen} onOpenChange={handleOpenChange}>
           <DialogTrigger
@@ -392,49 +403,24 @@ export function WoodsClient({ initialWoods }: WoodsClientProps) {
         <Table>
 
           <TableHeader>
-            <TableRow className="bg-muted/50">
-              <TableHead 
-                className="cursor-pointer hover:text-primary transition-colors font-bold"
-                onClick={() => requestSort('name')}
-              >
-                <div className="flex items-center">
-                  Nombre <SortIcon columnKey="name" />
-                </div>
+            <TableRow className="bg-muted/50 text-xs">
+              <TableHead className="cursor-pointer hover:text-primary transition-colors font-bold" onClick={() => requestSort('name')}>
+                <div className="flex items-center">Nombre <SortIcon columnKey="name" /></div>
               </TableHead>
-              <TableHead 
-                className="cursor-pointer hover:text-primary transition-colors font-bold"
-                onClick={() => requestSort('thickness')}
-              >
-                <div className="flex items-center">
-                  Espesor <SortIcon columnKey="thickness" />
-                </div>
+              <TableHead className="cursor-pointer hover:text-primary transition-colors font-bold w-24" onClick={() => requestSort('thickness')}>
+                <div className="flex items-center">Espesor <SortIcon columnKey="thickness" /></div>
               </TableHead>
-              <TableHead className="font-bold">Dimensiones (L x A)</TableHead>
-              <TableHead 
-                className="cursor-pointer hover:text-primary transition-colors font-bold"
-                onClick={() => requestSort('price')}
-              >
-                <div className="flex items-center">
-                  Precio <SortIcon columnKey="price" />
-                </div>
+              <TableHead className="font-bold w-28">Dim. (L×A)</TableHead>
+              <TableHead className="cursor-pointer hover:text-primary transition-colors font-bold text-right w-28" onClick={() => requestSort('price')}>
+                <div className="flex items-center justify-end">Precio <SortIcon columnKey="price" /></div>
               </TableHead>
-              <TableHead 
-                className="cursor-pointer hover:text-primary transition-colors font-bold"
-                onClick={() => requestSort('surfaceArea')}
-              >
-                <div className="flex items-center">
-                  Superficie <SortIcon columnKey="surfaceArea" />
-                </div>
+              <TableHead className="cursor-pointer hover:text-primary transition-colors font-bold text-right w-28" onClick={() => requestSort('surfaceArea')}>
+                <div className="flex items-center justify-end">Superficie <SortIcon columnKey="surfaceArea" /></div>
               </TableHead>
-              <TableHead 
-                className="cursor-pointer hover:text-primary transition-colors font-bold"
-                onClick={() => requestSort('dateUpd')}
-              >
-                <div className="flex items-center">
-                  Recordatorio <SortIcon columnKey="dateUpd" />
-                </div>
+              <TableHead className="cursor-pointer hover:text-primary transition-colors font-bold w-24" onClick={() => requestSort('dateUpd')}>
+                <div className="flex items-center">Recordatorio <SortIcon columnKey="dateUpd" /></div>
               </TableHead>
-              <TableHead className="text-right font-bold">Acciones</TableHead>
+              <TableHead className="text-right font-bold w-20">Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -446,49 +432,39 @@ export function WoodsClient({ initialWoods }: WoodsClientProps) {
               </TableRow>
             ) : (
               paginatedWoods.map((wood) => (
-                <TableRow key={wood.id} className="hover:bg-muted/50 transition-colors">
-                  <TableCell className="font-medium">{wood.name}</TableCell>
-                  <TableCell>
+                <TableRow key={wood.id} className="hover:bg-muted/50 transition-colors text-xs">
+                  <TableCell className="font-medium py-2">{wood.name}</TableCell>
+                  <TableCell className="py-2">
                     {wood.thickness ? `${wood.thickness} mm` : '-'}
-                    {wood.isBack && <span className="ml-2 text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full uppercase">Fondo</span>}
-                    {wood.isDrawer && <span className="ml-2 text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full uppercase">Cajón</span>}
+                    {wood.isBack && <span className="ml-1 text-[9px] bg-blue-100 text-blue-700 px-1 py-0.5 rounded-full uppercase">Fondo</span>}
+                    {wood.isDrawer && <span className="ml-1 text-[9px] bg-green-100 text-green-700 px-1 py-0.5 rounded-full uppercase">Cajón</span>}
                   </TableCell>
-                  <TableCell>
-                    {wood.length && wood.width ? `${wood.length} x ${wood.width} mm` : '-'}
+                  <TableCell className="py-2 whitespace-nowrap">
+                    {wood.length && wood.width ? `${wood.length}×${wood.width} mm` : '-'}
                   </TableCell>
-                  <TableCell className="font-semibold text-primary">
-                    $ {wood.price.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  <TableCell className="text-right font-semibold text-primary py-2 whitespace-nowrap">
+                    $ {wood.price.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="text-right py-2 whitespace-nowrap">
                     {wood.surfaceArea.toLocaleString('es-AR')} mm²
-                    {wood.isDefaultWood && <span className="ml-2 text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full uppercase font-bold">Defecto</span>}
+                    {wood.isDefaultWood && <span className="ml-1 text-[9px] bg-amber-100 text-amber-700 px-1 py-0.5 rounded-full uppercase font-bold">Def.</span>}
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="py-2">
                     {(() => {
                       const reminder = getReminder(wood.dateUpd)
                       return (
-                        <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${reminder.color}`}>
+                        <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold ${reminder.color}`}>
                           {reminder.label}
                         </span>
                       )
                     })()}
                   </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleEdit(wood)}
-                        className="h-8 w-8 text-muted-foreground hover:text-primary"
-                      >
+                  <TableCell className="text-right py-2">
+                    <div className="flex justify-end gap-1">
+                      <Button variant="ghost" size="icon" onClick={() => handleEdit(wood)} className="h-8 w-8 text-muted-foreground hover:text-primary">
                         <Pencil className="h-4 w-4" />
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDelete(wood.id)}
-                        className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                      >
+                      <Button variant="ghost" size="icon" onClick={() => handleDelete(wood.id)} className="h-8 w-8 text-muted-foreground hover:text-destructive">
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
