@@ -21,7 +21,7 @@ import {
   DialogTrigger,
   DialogFooter,
 } from '@/components/ui/dialog'
-import { createFurniture, updateFurniture, deleteFurniture, FurnitureInput, FurnitureConfigInput, FurnitureExtraConfigInput, FurnitureCostConfigInput } from '@/app/actions/furniture'
+import { createFurniture, updateFurniture, deleteFurniture, FurnitureInput, FurnitureConfigInput, FurnitureExtraConfigInput, FurnitureCostConfigInput, FurnitureLaborCostConfigInput, FurnitureAdditionalCostConfigInput } from '@/app/actions/furniture'
 import Image from 'next/image'
 
 interface FurnitureClientProps {
@@ -29,15 +29,17 @@ interface FurnitureClientProps {
   parts: any[]
   extraParts: any[]
   costs: any[]
+  laborCosts: any[]
+  additionalCosts: any[]
   woods: any[]
 }
 
-export function FurnitureClient({ initialItems, parts, extraParts, costs, woods }: FurnitureClientProps) {
+export function FurnitureClient({ initialItems, parts, extraParts, costs, laborCosts, additionalCosts, woods }: FurnitureClientProps) {
   const [items, setItems] = useState<any[]>(initialItems)
   const [isOpen, setIsOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<any | null>(null)
   const [isPending, setIsPending] = useState(false)
-  const [activeTab, setActiveTab] = useState<'basic' | 'parts' | 'extra' | 'costs'>('basic')
+  const [activeTab, setActiveTab] = useState<'basic' | 'parts' | 'extra' | 'costs' | 'labor' | 'additional'>('basic')
   
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
@@ -53,11 +55,15 @@ export function FurnitureClient({ initialItems, parts, extraParts, costs, woods 
     furniturePrice: 0,
     hardwarePrice: 0,
     costPrice: 0,
+    laborPrice: 0,
+    additionalPrice: 0,
     furnitureTotal: 0,
     image: null,
     parts: [],
     extraParts: [],
     costs: [],
+    laborCosts: [],
+    additionalCosts: [],
   })
 
   const handleOpenChange = (open: boolean) => {
@@ -79,11 +85,15 @@ export function FurnitureClient({ initialItems, parts, extraParts, costs, woods 
       furniturePrice: 0,
       hardwarePrice: 0,
       costPrice: 0,
+      laborPrice: 0,
+      additionalPrice: 0,
       furnitureTotal: 0,
       image: null,
       parts: [],
       extraParts: [],
       costs: [],
+      laborCosts: [],
+      additionalCosts: [],
     })
   }
 
@@ -98,6 +108,8 @@ export function FurnitureClient({ initialItems, parts, extraParts, costs, woods 
       furniturePrice: item.furniturePrice,
       hardwarePrice: item.hardwarePrice,
       costPrice: item.costPrice,
+      laborPrice: item.laborPrice || 0,
+      additionalPrice: item.additionalPrice || 0,
       furnitureTotal: item.furnitureTotal,
       image: item.image,
       parts: item.parts.map((p: any) => ({
@@ -118,6 +130,14 @@ export function FurnitureClient({ initialItems, parts, extraParts, costs, woods 
         idCost: c.idCost,
         quantity: c.quantity,
       })),
+      laborCosts: item.laborCosts ? item.laborCosts.map((l: any) => ({
+        idLaborCost: l.idLaborCost,
+        quantity: l.quantity,
+      })) : [],
+      additionalCosts: item.additionalCosts ? item.additionalCosts.map((a: any) => ({
+        idAdditionalCosts: a.idAdditionalCosts,
+        quantity: a.quantity,
+      })) : [],
     })
     setIsOpen(true)
   }
@@ -258,12 +278,24 @@ export function FurnitureClient({ initialItems, parts, extraParts, costs, woods 
       return acc + (cost ? Number(cost.price) * c.quantity : 0)
     }, 0)
 
-    const totalEverything = totalFurniturePrice + totalHardware + totalCosts
+    const totalLabor = formData.laborCosts.reduce((acc, l) => {
+      const labor = laborCosts.find(item => item.id === l.idLaborCost)
+      return acc + (labor ? Number(labor.price) * l.quantity : 0)
+    }, 0)
+
+    const totalAdditional = formData.additionalCosts.reduce((acc, a) => {
+      const additional = additionalCosts.find(item => item.id === a.idAdditionalCosts)
+      return acc + (additional ? Number(additional.price) * a.quantity : 0)
+    }, 0)
+
+    const totalEverything = totalFurniturePrice + totalHardware + totalCosts + totalLabor + totalAdditional
 
     setFormData(prev => {
       if (Math.abs(totalFurniturePrice - prev.furniturePrice) < 0.01 && 
           Math.abs(totalHardware - prev.hardwarePrice) < 0.01 && 
           Math.abs(totalCosts - prev.costPrice) < 0.01 && 
+          Math.abs(totalLabor - prev.laborPrice) < 0.01 && 
+          Math.abs(totalAdditional - prev.additionalPrice) < 0.01 && 
           Math.abs(totalEverything - prev.furnitureTotal) < 0.01) {
         return prev
       }
@@ -272,10 +304,12 @@ export function FurnitureClient({ initialItems, parts, extraParts, costs, woods 
         furniturePrice: Number(totalFurniturePrice.toFixed(2)),
         hardwarePrice: Number(totalHardware.toFixed(2)),
         costPrice: Number(totalCosts.toFixed(2)),
+        laborPrice: Number(totalLabor.toFixed(2)),
+        additionalPrice: Number(totalAdditional.toFixed(2)),
         furnitureTotal: Number(totalEverything.toFixed(2))
       }
     })
-  }, [formData.parts, formData.extraParts, formData.costs, formData.length, formData.width, formData.depth, extraParts, costs, parts, defaultWood])
+  }, [formData.parts, formData.extraParts, formData.costs, formData.laborCosts, formData.additionalCosts, formData.length, formData.width, formData.depth, extraParts, costs, laborCosts, additionalCosts, parts, defaultWood])
 
   const SortIcon = ({ columnKey }: { columnKey: string }) => {
     if (sortConfig?.key !== columnKey) return <ArrowUpDown className="ml-2 h-4 w-4" />
@@ -288,11 +322,16 @@ export function FurnitureClient({ initialItems, parts, extraParts, costs, woods 
 
   // Configuration Handlers
   const addPartConfig = () => {
+    const availableParts = parts.filter(part => !formData.parts.some(p => p.idPart === part.id))
+    if (availableParts.length === 0) {
+      alert('No hay más piezas disponibles para agregar.')
+      return
+    }
     setFormData({
       ...formData,
       parts: [
         ...formData.parts,
-        { idPart: parts[0]?.id || 0, quantity: 1, edges1: false, edges2: false, edges3: false, edges4: false, edgeSize: 0, orientation: '' }
+        { idPart: availableParts[0].id, quantity: 1, edges1: false, edges2: false, edges3: false, edges4: false, edgeSize: 0, orientation: '' }
       ]
     })
   }
@@ -310,9 +349,14 @@ export function FurnitureClient({ initialItems, parts, extraParts, costs, woods 
   }
 
   const addExtraConfig = () => {
+    const availableExtras = extraParts.filter(ep => !formData.extraParts.some(p => p.idPartExtra === ep.id))
+    if (availableExtras.length === 0) {
+      alert('No hay más herrajes disponibles para agregar.')
+      return
+    }
     setFormData({
       ...formData,
-      extraParts: [...formData.extraParts, { idPartExtra: extraParts[0]?.id || 0, quantity: 1 }]
+      extraParts: [...formData.extraParts, { idPartExtra: availableExtras[0].id, quantity: 1 }]
     })
   }
 
@@ -329,9 +373,14 @@ export function FurnitureClient({ initialItems, parts, extraParts, costs, woods 
   }
 
   const addCostConfig = () => {
+    const availableCosts = costs.filter(c => !formData.costs.some(p => p.idCost === c.id))
+    if (availableCosts.length === 0) {
+      alert('No hay más acabados disponibles para agregar.')
+      return
+    }
     setFormData({
       ...formData,
-      costs: [...formData.costs, { idCost: costs[0]?.id || 0, quantity: 1 }]
+      costs: [...formData.costs, { idCost: availableCosts[0].id, quantity: 1 }]
     })
   }
 
@@ -347,6 +396,54 @@ export function FurnitureClient({ initialItems, parts, extraParts, costs, woods 
     setFormData({ ...formData, costs: newCosts })
   }
 
+  const addLaborCostConfig = () => {
+    const availableLabor = laborCosts.filter(l => !formData.laborCosts.some(p => p.idLaborCost === l.id))
+    if (availableLabor.length === 0) {
+      alert('No hay más conceptos de mano de obra disponibles para agregar.')
+      return
+    }
+    setFormData({
+      ...formData,
+      laborCosts: [...formData.laborCosts, { idLaborCost: availableLabor[0].id, quantity: 1 }]
+    })
+  }
+
+  const removeLaborCostConfig = (index: number) => {
+    const newLaborCosts = [...formData.laborCosts]
+    newLaborCosts.splice(index, 1)
+    setFormData({ ...formData, laborCosts: newLaborCosts })
+  }
+
+  const updateLaborCostConfig = (index: number, field: keyof FurnitureLaborCostConfigInput, value: any) => {
+    const newLaborCosts = [...formData.laborCosts]
+    newLaborCosts[index] = { ...newLaborCosts[index], [field]: value }
+    setFormData({ ...formData, laborCosts: newLaborCosts })
+  }
+
+  const addAdditionalCostConfig = () => {
+    const availableAdditional = additionalCosts.filter(a => !formData.additionalCosts.some(p => p.idAdditionalCosts === a.id))
+    if (availableAdditional.length === 0) {
+      alert('No hay más extras disponibles para agregar.')
+      return
+    }
+    setFormData({
+      ...formData,
+      additionalCosts: [...formData.additionalCosts, { idAdditionalCosts: availableAdditional[0].id, quantity: 1 }]
+    })
+  }
+
+  const removeAdditionalCostConfig = (index: number) => {
+    const newAdditionalCosts = [...formData.additionalCosts]
+    newAdditionalCosts.splice(index, 1)
+    setFormData({ ...formData, additionalCosts: newAdditionalCosts })
+  }
+
+  const updateAdditionalCostConfig = (index: number, field: keyof FurnitureAdditionalCostConfigInput, value: any) => {
+    const newAdditionalCosts = [...formData.additionalCosts]
+    newAdditionalCosts[index] = { ...newAdditionalCosts[index], [field]: value }
+    setFormData({ ...formData, additionalCosts: newAdditionalCosts })
+  }
+
   const formatCurrency = (amount: number) => {
     return amount.toLocaleString('es-AR', {
       style: 'currency',
@@ -359,13 +456,24 @@ export function FurnitureClient({ initialItems, parts, extraParts, costs, woods 
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <div className="flex w-full max-sm:w-1/2 max-w-sm items-center space-x-2">
+        <div className="relative flex w-full max-sm:w-1/2 max-w-sm items-center">
           <Input 
             placeholder="Buscar muebles..." 
-            className="max-w-sm" 
+            className="max-w-sm pr-8" 
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
+          {searchTerm && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute right-0 top-0 h-9 w-9 text-muted-foreground hover:text-foreground hover:bg-transparent"
+              onClick={() => setSearchTerm('')}
+              title="Borrar búsqueda"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          )}
         </div>
         <Dialog open={isOpen} onOpenChange={handleOpenChange}>
           <DialogTrigger
@@ -403,7 +511,19 @@ export function FurnitureClient({ initialItems, parts, extraParts, costs, woods 
                 className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${activeTab === 'costs' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
                 onClick={() => setActiveTab('costs')}
               >
-                Costos ({formData.costs.length})
+                Acabados ({formData.costs.length})
+              </button>
+              <button 
+                className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${activeTab === 'labor' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+                onClick={() => setActiveTab('labor')}
+              >
+                Mano de Obra ({formData.laborCosts.length})
+              </button>
+              <button 
+                className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${activeTab === 'additional' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+                onClick={() => setActiveTab('additional')}
+              >
+                Extras ({formData.additionalCosts.length})
               </button>
             </div>
 
@@ -462,7 +582,7 @@ export function FurnitureClient({ initialItems, parts, extraParts, costs, woods 
                   </div>
 
                   {/* Fila Inferior: Precios en una sola línea */}
-                  <div className="grid grid-cols-4 gap-4 pt-4 border-t">
+                  <div className="grid grid-cols-6 gap-4 pt-4 border-t">
                     <div className="space-y-2">
                       <Label className="text-xs font-bold text-muted-foreground uppercase">Precio Mueble</Label>
                       <div className="h-9 w-full rounded-md border border-input bg-muted/30 px-3 py-2 text-sm text-primary font-semibold flex items-center">
@@ -476,9 +596,21 @@ export function FurnitureClient({ initialItems, parts, extraParts, costs, woods 
                       </div>
                     </div>
                     <div className="space-y-2">
-                      <Label className="text-xs font-bold text-muted-foreground uppercase text-green-600">Costos</Label>
+                      <Label className="text-xs font-bold text-muted-foreground uppercase text-green-600">Acabados</Label>
                       <div className="h-9 w-full rounded-md border border-input bg-muted/30 px-3 py-2 text-sm text-green-600 font-semibold flex items-center">
                         {formatCurrency(formData.costPrice)}
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold text-muted-foreground uppercase text-blue-600">Mano de Obra</Label>
+                      <div className="h-9 w-full rounded-md border border-input bg-muted/30 px-3 py-2 text-sm text-blue-600 font-semibold flex items-center">
+                        {formatCurrency(formData.laborPrice)}
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold text-muted-foreground uppercase text-purple-600">Extras</Label>
+                      <div className="h-9 w-full rounded-md border border-input bg-muted/30 px-3 py-2 text-sm text-purple-600 font-semibold flex items-center">
+                        {formatCurrency(formData.additionalPrice)}
                       </div>
                     </div>
                     <div className="space-y-2">
@@ -522,7 +654,10 @@ export function FurnitureClient({ initialItems, parts, extraParts, costs, woods 
                                 value={p.idPart} 
                                 onChange={e => updatePartConfig(idx, 'idPart', parseInt(e.target.value))}
                               >
-                                {parts.map(part => <option key={part.id} value={part.id}>{part.name}</option>)}
+                                {parts.map(part => {
+                                  const isSelected = formData.parts.some((p2, i2) => i2 !== idx && p2.idPart === part.id)
+                                  return <option key={part.id} value={part.id} disabled={isSelected}>{part.name}</option>
+                                })}
                               </select>
                             </TableCell>
                             <TableCell>
@@ -643,7 +778,10 @@ export function FurnitureClient({ initialItems, parts, extraParts, costs, woods 
                                 value={ep.idPartExtra} 
                                 onChange={e => updateExtraConfig(idx, 'idPartExtra', parseInt(e.target.value))}
                               >
-                                {extraParts.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
+                                {extraParts.map(item => {
+                                  const isSelected = formData.extraParts.some((p2, i2) => i2 !== idx && p2.idPartExtra === item.id)
+                                  return <option key={item.id} value={item.id} disabled={isSelected}>{item.name}</option>
+                                })}
                               </select>
                             </TableCell>
                             <TableCell>
@@ -677,9 +815,9 @@ export function FurnitureClient({ initialItems, parts, extraParts, costs, woods 
               {activeTab === 'costs' && (
                 <div className="space-y-4">
                   <div className="flex justify-between items-center">
-                    <h3 className="font-semibold">Configuración de Costos</h3>
+                    <h3 className="font-semibold">Configuración de Acabados</h3>
                     <Button type="button" variant="outline" size="sm" onClick={addCostConfig}>
-                      <Plus className="h-4 w-4 mr-2" /> Agregar Costo
+                      <Plus className="h-4 w-4 mr-2" /> Agregar Acabado
                     </Button>
                   </div>
                   <div className="border rounded-md overflow-hidden">
@@ -702,7 +840,10 @@ export function FurnitureClient({ initialItems, parts, extraParts, costs, woods 
                                 value={c.idCost} 
                                 onChange={e => updateCostConfig(idx, 'idCost', parseInt(e.target.value))}
                               >
-                                {costs.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
+                                {costs.map(item => {
+                                  const isSelected = formData.costs.some((c2, i2) => i2 !== idx && c2.idCost === item.id)
+                                  return <option key={item.id} value={item.id} disabled={isSelected}>{item.name}</option>
+                                })}
                               </select>
                             </TableCell>
                             <TableCell>
@@ -722,6 +863,130 @@ export function FurnitureClient({ initialItems, parts, extraParts, costs, woods 
                             </TableCell>
                             <TableCell>
                               <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => removeCostConfig(idx)}>
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'labor' && (
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <h3 className="font-semibold">Configuración de Mano de Obra</h3>
+                    <Button type="button" variant="outline" size="sm" onClick={addLaborCostConfig}>
+                      <Plus className="h-4 w-4 mr-2" /> Agregar Mano de Obra
+                    </Button>
+                  </div>
+                  <div className="border rounded-md overflow-hidden">
+                    <Table>
+                      <TableHeader className="bg-muted/50">
+                        <TableRow>
+                          <TableHead>Concepto</TableHead>
+                          <TableHead className="w-24">Cant.</TableHead>
+                          <TableHead>Precio Unit.</TableHead>
+                          <TableHead>Subtotal</TableHead>
+                          <TableHead className="w-10"></TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {formData.laborCosts.map((l, idx) => (
+                          <TableRow key={idx}>
+                            <TableCell>
+                              <select 
+                                className="w-full bg-transparent border-none focus:ring-0 text-sm"
+                                value={l.idLaborCost} 
+                                onChange={e => updateLaborCostConfig(idx, 'idLaborCost', parseInt(e.target.value))}
+                              >
+                                {laborCosts.map(item => {
+                                  const isSelected = formData.laborCosts.some((l2, i2) => i2 !== idx && l2.idLaborCost === item.id)
+                                  return <option key={item.id} value={item.id} disabled={isSelected}>{item.name}</option>
+                                })}
+                              </select>
+                            </TableCell>
+                            <TableCell>
+                              <Input type="number" className="h-8" value={l.quantity} onChange={e => updateLaborCostConfig(idx, 'quantity', parseInt(e.target.value) || 1)} />
+                            </TableCell>
+                            <TableCell className="text-xs font-medium text-primary">
+                              {(() => {
+                                const item = laborCosts.find(i => i.id === l.idLaborCost)
+                                return item ? formatCurrency(Number(item.price)) : '-'
+                              })()}
+                            </TableCell>
+                            <TableCell className="text-xs font-bold text-primary">
+                              {(() => {
+                                const item = laborCosts.find(i => i.id === l.idLaborCost)
+                                return item ? formatCurrency(Number(item.price) * l.quantity) : '-'
+                              })()}
+                            </TableCell>
+                            <TableCell>
+                              <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => removeLaborCostConfig(idx)}>
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'additional' && (
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <h3 className="font-semibold">Configuración de Extras</h3>
+                    <Button type="button" variant="outline" size="sm" onClick={addAdditionalCostConfig}>
+                      <Plus className="h-4 w-4 mr-2" /> Agregar Extra
+                    </Button>
+                  </div>
+                  <div className="border rounded-md overflow-hidden">
+                    <Table>
+                      <TableHeader className="bg-muted/50">
+                        <TableRow>
+                          <TableHead>Concepto</TableHead>
+                          <TableHead className="w-24">Cant.</TableHead>
+                          <TableHead>Precio Unit.</TableHead>
+                          <TableHead>Subtotal</TableHead>
+                          <TableHead className="w-10"></TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {formData.additionalCosts.map((a, idx) => (
+                          <TableRow key={idx}>
+                            <TableCell>
+                              <select 
+                                className="w-full bg-transparent border-none focus:ring-0 text-sm"
+                                value={a.idAdditionalCosts} 
+                                onChange={e => updateAdditionalCostConfig(idx, 'idAdditionalCosts', parseInt(e.target.value))}
+                              >
+                                {additionalCosts.map(item => {
+                                  const isSelected = formData.additionalCosts.some((a2, i2) => i2 !== idx && a2.idAdditionalCosts === item.id)
+                                  return <option key={item.id} value={item.id} disabled={isSelected}>{item.name}</option>
+                                })}
+                              </select>
+                            </TableCell>
+                            <TableCell>
+                              <Input type="number" className="h-8" value={a.quantity} onChange={e => updateAdditionalCostConfig(idx, 'quantity', parseInt(e.target.value) || 1)} />
+                            </TableCell>
+                            <TableCell className="text-xs font-medium text-primary">
+                              {(() => {
+                                const item = additionalCosts.find(i => i.id === a.idAdditionalCosts)
+                                return item ? formatCurrency(Number(item.price)) : '-'
+                              })()}
+                            </TableCell>
+                            <TableCell className="text-xs font-bold text-primary">
+                              {(() => {
+                                const item = additionalCosts.find(i => i.id === a.idAdditionalCosts)
+                                return item ? formatCurrency(Number(item.price) * a.quantity) : '-'
+                              })()}
+                            </TableCell>
+                            <TableCell>
+                              <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => removeAdditionalCostConfig(idx)}>
                                 <Trash2 className="h-4 w-4" />
                               </Button>
                             </TableCell>
@@ -785,7 +1050,23 @@ export function FurnitureClient({ initialItems, parts, extraParts, costs, woods 
                 onClick={() => requestSort('costPrice')}
               >
                 <div className="flex items-center justify-end">
-                  Costos <SortIcon columnKey="costPrice" />
+                  Acabados <SortIcon columnKey="costPrice" />
+                </div>
+              </TableHead>
+              <TableHead 
+                className="cursor-pointer hover:text-primary transition-colors font-bold text-right"
+                onClick={() => requestSort('laborPrice')}
+              >
+                <div className="flex items-center justify-end">
+                  Mano de Obra <SortIcon columnKey="laborPrice" />
+                </div>
+              </TableHead>
+              <TableHead 
+                className="cursor-pointer hover:text-primary transition-colors font-bold text-right"
+                onClick={() => requestSort('additionalPrice')}
+              >
+                <div className="flex items-center justify-end">
+                  Extras <SortIcon columnKey="additionalPrice" />
                 </div>
               </TableHead>
               <TableHead 
@@ -803,7 +1084,7 @@ export function FurnitureClient({ initialItems, parts, extraParts, costs, woods 
           <TableBody>
             {paginatedItems.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center h-24 text-muted-foreground">
+                <TableCell colSpan={9} className="text-center h-24 text-muted-foreground">
                   No se encontraron muebles.
                 </TableCell>
               </TableRow>
@@ -824,14 +1105,22 @@ export function FurnitureClient({ initialItems, parts, extraParts, costs, woods 
                   <TableCell className="text-right font-medium text-green-600">
                     $ {Number(item.costPrice).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </TableCell>
+                  <TableCell className="text-right font-medium text-blue-600">
+                    $ {Number(item.laborPrice || 0).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </TableCell>
+                  <TableCell className="text-right font-medium text-purple-600">
+                    $ {Number(item.additionalPrice || 0).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </TableCell>
                   <TableCell className="text-right font-bold text-primary">
                     $ {Number(item.furnitureTotal).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </TableCell>
                   <TableCell className="text-center">
                     <div className="flex justify-center gap-1">
                       <span className="bg-blue-100 text-blue-700 text-[10px] px-1.5 py-0.5 rounded-full" title="Piezas">{item.parts.length} P</span>
-                      <span className="bg-orange-100 text-orange-700 text-[10px] px-1.5 py-0.5 rounded-full" title="Extras">{item.extraParts.length} E</span>
-                      <span className="bg-green-100 text-green-700 text-[10px] px-1.5 py-0.5 rounded-full" title="Costos">{item.costs.length} C</span>
+                      <span className="bg-orange-100 text-orange-700 text-[10px] px-1.5 py-0.5 rounded-full" title="Herrajes">{item.extraParts.length} H</span>
+                      <span className="bg-green-100 text-green-700 text-[10px] px-1.5 py-0.5 rounded-full" title="Acabados">{item.costs.length} A</span>
+                      <span className="bg-blue-100 text-blue-700 text-[10px] px-1.5 py-0.5 rounded-full" title="Mano de Obra">{item.laborCosts ? item.laborCosts.length : 0} M</span>
+                      <span className="bg-purple-100 text-purple-700 text-[10px] px-1.5 py-0.5 rounded-full" title="Extras">{item.additionalCosts ? item.additionalCosts.length : 0} E</span>
                     </div>
                   </TableCell>
                   <TableCell className="text-right">

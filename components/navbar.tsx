@@ -41,7 +41,7 @@ export function Navbar() {
           render={
             <button className={`flex items-center gap-1.5 transition-colors hover:text-foreground/80 outline-none ${className}`}>
               <Settings className="h-4 w-4" />
-              Configuración
+              Materiales
             </button>
           }
         />
@@ -66,7 +66,7 @@ export function Navbar() {
             render={
               <Link href="/extra-parts" className="flex items-center gap-2 cursor-pointer w-full">
                 <Layers className="h-4 w-4" />
-                <span>Piezas Extra</span>
+                <span>Herrajes</span>
               </Link>
             }
           />
@@ -74,7 +74,23 @@ export function Navbar() {
             render={
               <Link href="/costs" className="flex items-center gap-2 cursor-pointer w-full">
                 <DollarSign className="h-4 w-4" />
-                <span>Costos</span>
+                <span>Acabados</span>
+              </Link>
+            }
+          />
+          <DropdownMenuItem
+            render={
+              <Link href="/labor" className="flex items-center gap-2 cursor-pointer w-full">
+                <Hammer className="h-4 w-4" />
+                <span>Mano de Obra</span>
+              </Link>
+            }
+          />
+          <DropdownMenuItem
+            render={
+              <Link href="/extras" className="flex items-center gap-2 cursor-pointer w-full">
+                <Package className="h-4 w-4" />
+                <span>Extras</span>
               </Link>
             }
           />

@@ -2,17 +2,21 @@ import { getFurnitures } from '@/app/actions/furniture'
 import { getParts } from '@/app/actions/part'
 import { getExtraParts } from '@/app/actions/extra-part'
 import { getCosts } from '@/app/actions/cost'
+import { getLaborCosts } from '@/app/actions/labor'
+import { getAdditionalCosts } from '@/app/actions/extra'
 import { getWoods } from '@/app/actions/wood'
 import { FurnitureClient } from './furniture-client'
 
 export const dynamic = 'force-dynamic'
 
 export default async function FurniturePage() {
-  const [furnitures, parts, extraParts, costs, woods] = await Promise.all([
+  const [furnitures, parts, extraParts, costs, laborCosts, additionalCosts, woods] = await Promise.all([
     getFurnitures(),
     getParts(),
     getExtraParts(),
     getCosts(),
+    getLaborCosts(),
+    getAdditionalCosts(),
     getWoods(),
   ])
 
@@ -26,6 +30,8 @@ export default async function FurniturePage() {
         parts={parts}
         extraParts={extraParts}
         costs={costs}
+        laborCosts={laborCosts}
+        additionalCosts={additionalCosts}
         woods={woods}
       />
     </div>

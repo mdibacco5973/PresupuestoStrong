@@ -24,6 +24,16 @@ export type FurnitureCostConfigInput = {
   quantity: number
 }
 
+export type FurnitureLaborCostConfigInput = {
+  idLaborCost: number
+  quantity: number
+}
+
+export type FurnitureAdditionalCostConfigInput = {
+  idAdditionalCosts: number
+  quantity: number
+}
+
 export type FurnitureInput = {
   name: string
   code: string
@@ -33,11 +43,15 @@ export type FurnitureInput = {
   furniturePrice: number
   hardwarePrice: number
   costPrice: number
+  laborPrice: number
+  additionalPrice: number
   furnitureTotal: number
   image?: string | null
   parts: FurnitureConfigInput[]
   extraParts: FurnitureExtraConfigInput[]
   costs: FurnitureCostConfigInput[]
+  laborCosts: FurnitureLaborCostConfigInput[]
+  additionalCosts: FurnitureAdditionalCostConfigInput[]
 }
 
 export async function getFurnitures() {
@@ -47,6 +61,8 @@ export async function getFurnitures() {
         parts: { include: { part: true } },
         extraParts: { include: { extraPart: true } },
         costs: { include: { cost: true } },
+        laborCosts: { include: { laborCost: true } },
+        additionalCosts: { include: { additionalCost: true } },
       },
       orderBy: { id: 'desc' },
     })
@@ -59,11 +75,21 @@ export async function getFurnitures() {
         return acc + (c.cost ? Number(c.cost.price) * c.quantity : 0)
       }, 0)
 
+      const laborTotal = item.laborCosts.reduce((acc, l) => {
+        return acc + (l.laborCost ? Number(l.laborCost.price) * l.quantity : 0)
+      }, 0)
+
+      const additionalTotal = item.additionalCosts.reduce((acc, a) => {
+        return acc + (a.additionalCost ? Number(a.additionalCost.price) * a.quantity : 0)
+      }, 0)
+
       return {
         ...item,
         furniturePrice: Number(item.furniturePrice),
         hardwarePrice: hardwareTotal,
         costPrice: costTotal,
+        laborPrice: laborTotal,
+        additionalPrice: additionalTotal,
         furnitureTotal: Number(item.furnitureTotal),
         image: item.image ? Buffer.from(item.image).toString('base64') : null,
         parts: item.parts.map(p => ({ 
@@ -77,6 +103,14 @@ export async function getFurnitures() {
         costs: item.costs.map(c => ({ 
           ...c,
           cost: c.cost ? { ...c.cost, price: Number(c.cost.price) } : null
+        })),
+        laborCosts: item.laborCosts.map(l => ({
+          ...l,
+          laborCost: l.laborCost ? { ...l.laborCost, price: Number(l.laborCost.price) } : null
+        })),
+        additionalCosts: item.additionalCosts.map(a => ({
+          ...a,
+          additionalCost: a.additionalCost ? { ...a.additionalCost, price: Number(a.additionalCost.price) } : null
         })),
       }
     })
@@ -103,6 +137,8 @@ export async function createFurniture(data: FurnitureInput) {
         furniturePrice: data.furniturePrice,
         hardwarePrice: data.hardwarePrice,
         costPrice: data.costPrice,
+        laborPrice: data.laborPrice || 0,
+        additionalPrice: data.additionalPrice || 0,
         furnitureTotal: data.furnitureTotal,
         image: imageBuffer,
         parts: {
@@ -129,11 +165,25 @@ export async function createFurniture(data: FurnitureInput) {
             quantity: c.quantity,
           })),
         },
+        laborCosts: {
+          create: data.laborCosts.map(l => ({
+            idLaborCost: l.idLaborCost,
+            quantity: l.quantity,
+          })),
+        },
+        additionalCosts: {
+          create: data.additionalCosts.map(a => ({
+            idAdditionalCosts: a.idAdditionalCosts,
+            quantity: a.quantity,
+          })),
+        },
       },
       include: {
         parts: true,
         extraParts: true,
         costs: true,
+        laborCosts: true,
+        additionalCosts: true,
       }
     })
     revalidatePath('/furniture')
@@ -142,6 +192,8 @@ export async function createFurniture(data: FurnitureInput) {
       furniturePrice: Number(item.furniturePrice),
       hardwarePrice: Number(item.hardwarePrice),
       costPrice: Number(item.costPrice),
+      laborPrice: Number((item as any).laborPrice || 0),
+      additionalPrice: Number((item as any).additionalPrice || 0),
       furnitureTotal: Number(item.furnitureTotal),
       parts: item.parts.map(p => ({ ...p, edgeSize: Number(p.edgeSize) })),
     }
@@ -160,6 +212,8 @@ export async function updateFurniture(id: number, data: FurnitureInput) {
       await tx.furnitureConfig.deleteMany({ where: { idFurniture: id } })
       await tx.furnitureExtraConfig.deleteMany({ where: { idFurniture: id } })
       await tx.furnitureCostConfig.deleteMany({ where: { idFurniture: id } })
+      await tx.furnitureLaborCostConfig.deleteMany({ where: { idFurniture: id } })
+      await tx.furnitureAdditionalCostConfig.deleteMany({ where: { idFurniture: id } })
 
       return await tx.furniture.update({
         where: { id },
@@ -172,6 +226,8 @@ export async function updateFurniture(id: number, data: FurnitureInput) {
           furniturePrice: data.furniturePrice,
           hardwarePrice: data.hardwarePrice,
           costPrice: data.costPrice,
+          laborPrice: data.laborPrice || 0,
+          additionalPrice: data.additionalPrice || 0,
           furnitureTotal: data.furnitureTotal,
           image: imageBuffer,
           parts: {
@@ -198,11 +254,25 @@ export async function updateFurniture(id: number, data: FurnitureInput) {
               quantity: c.quantity,
             })),
           },
+          laborCosts: {
+            create: data.laborCosts.map(l => ({
+              idLaborCost: l.idLaborCost,
+              quantity: l.quantity,
+            })),
+          },
+          additionalCosts: {
+            create: data.additionalCosts.map(a => ({
+              idAdditionalCosts: a.idAdditionalCosts,
+              quantity: a.quantity,
+            })),
+          },
         },
         include: {
           parts: true,
           extraParts: true,
           costs: true,
+          laborCosts: true,
+          additionalCosts: true,
         }
       })
     })
@@ -213,7 +283,10 @@ export async function updateFurniture(id: number, data: FurnitureInput) {
       furniturePrice: Number(item.furniturePrice),
       hardwarePrice: Number(item.hardwarePrice),
       costPrice: Number(item.costPrice),
+      laborPrice: Number((item as any).laborPrice || 0),
+      additionalPrice: Number((item as any).additionalPrice || 0),
       furnitureTotal: Number(item.furnitureTotal),
+      parts: item.parts.map(p => ({ ...p, edgeSize: Number(p.edgeSize) })),
     }
   } catch (error) {
     console.error('Error updating furniture:', error)

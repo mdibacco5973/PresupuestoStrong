@@ -21,30 +21,30 @@ import {
   DialogTrigger,
   DialogFooter,
 } from '@/components/ui/dialog'
-import { createCost, updateCost, deleteCost, CostInput } from '@/app/actions/cost'
+import { createAdditionalCost, updateAdditionalCost, deleteAdditionalCost, AdditionalCostInput } from '@/app/actions/extra'
 
-type CostUI = {
+type AdditionalCostUI = {
   id: number
   name: string
   price: number
   dateUpd: Date
 }
 
-interface CostsClientProps {
-  initialItems: CostUI[]
+interface ExtrasClientProps {
+  initialItems: AdditionalCostUI[]
 }
 
-export function CostsClient({ initialItems }: CostsClientProps) {
-  const [items, setItems] = useState<CostUI[]>(initialItems)
+export function ExtrasClient({ initialItems }: ExtrasClientProps) {
+  const [items, setItems] = useState<AdditionalCostUI[]>(initialItems)
   const [isOpen, setIsOpen] = useState(false)
-  const [editingItem, setEditingItem] = useState<CostUI | null>(null)
+  const [editingItem, setEditingItem] = useState<AdditionalCostUI | null>(null)
   const [isPending, setIsPending] = useState(false)
-  const [sortConfig, setSortConfig] = useState<{ key: keyof CostUI; direction: 'asc' | 'desc' } | null>(null)
+  const [sortConfig, setSortConfig] = useState<{ key: keyof AdditionalCostUI; direction: 'asc' | 'desc' } | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 10
   
-  const [formData, setFormData] = useState<CostInput>({
+  const [formData, setFormData] = useState<AdditionalCostInput>({
     name: '',
     price: 0,
   })
@@ -64,7 +64,7 @@ export function CostsClient({ initialItems }: CostsClientProps) {
     })
   }
 
-  const handleEdit = (item: CostUI) => {
+  const handleEdit = (item: AdditionalCostUI) => {
     setEditingItem(item)
     setFormData({
       name: item.name,
@@ -74,14 +74,14 @@ export function CostsClient({ initialItems }: CostsClientProps) {
   }
 
   const handleDelete = async (id: number) => {
-    if (!confirm('¿Estás seguro de que deseas eliminar este acabado?')) return
+    if (!confirm('¿Estás seguro de que deseas eliminar este extra?')) return
     
     try {
-      await deleteCost(id)
+      await deleteAdditionalCost(id)
       setItems(items.filter(i => i.id !== id))
     } catch (error) {
-      console.error('Error deleting cost:', error)
-      alert('Error al eliminar el acabado')
+      console.error('Error deleting additional cost:', error)
+      alert('Error al eliminar el extra')
     }
   }
 
@@ -91,24 +91,24 @@ export function CostsClient({ initialItems }: CostsClientProps) {
     
     try {
       if (editingItem) {
-        const updated = await updateCost(editingItem.id, formData)
+        const updated = await updateAdditionalCost(editingItem.id, formData)
         setItems(items.map(i => i.id === updated.id ? updated : i))
       } else {
-        const created = await createCost(formData)
+        const created = await createAdditionalCost(formData)
         setItems([created, ...items])
       }
       setIsOpen(false)
       resetForm()
       setEditingItem(null)
     } catch (error) {
-      console.error('Error saving cost:', error)
-      alert('Error al guardar el acabado')
+      console.error('Error saving additional cost:', error)
+      alert('Error al guardar el extra')
     } finally {
       setIsPending(false)
     }
   }
 
-  const requestSort = (key: keyof CostUI) => {
+  const requestSort = (key: keyof AdditionalCostUI) => {
     let direction: 'asc' | 'desc' = 'asc'
     if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
       direction = 'desc'
@@ -128,7 +128,7 @@ export function CostsClient({ initialItems }: CostsClientProps) {
     return 0
   })
 
-  const SortIcon = ({ columnKey }: { columnKey: keyof CostUI }) => {
+  const SortIcon = ({ columnKey }: { columnKey: keyof AdditionalCostUI }) => {
     if (sortConfig?.key !== columnKey) return <ArrowUpDown className="ml-2 h-4 w-4" />
     return sortConfig.direction === 'asc' ? (
       <ArrowUp className="ml-2 h-4 w-4 text-primary" />
@@ -176,7 +176,7 @@ export function CostsClient({ initialItems }: CostsClientProps) {
       <div className="flex justify-between items-center">
         <div className="flex w-full max-w-sm items-center space-x-2">
           <Input 
-            placeholder="Buscar acabados..." 
+            placeholder="Buscar extras..." 
             className="max-w-sm" 
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -186,13 +186,13 @@ export function CostsClient({ initialItems }: CostsClientProps) {
           <DialogTrigger
             render={
               <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
-                <Plus className="mr-2 h-4 w-4" /> Agregar Acabado
+                <Plus className="mr-2 h-4 w-4" /> Agregar Extra
               </Button>
             }
           />
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
-              <DialogTitle>{editingItem ? 'Editar Acabado' : 'Agregar Acabado'}</DialogTitle>
+              <DialogTitle>{editingItem ? 'Editar Extra' : 'Agregar Extra'}</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4 pt-4">
               <div className="space-y-2">
@@ -218,7 +218,7 @@ export function CostsClient({ initialItems }: CostsClientProps) {
               
               <DialogFooter>
                 <Button type="submit" disabled={isPending}>
-                  {isPending ? 'Guardando...' : 'Guardar Acabado'}
+                  {isPending ? 'Guardando...' : 'Guardar Extra'}
                 </Button>
               </DialogFooter>
             </form>
@@ -262,7 +262,7 @@ export function CostsClient({ initialItems }: CostsClientProps) {
             {paginatedItems.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
-                  No se encontraron acabados.
+                  No se encontraron extras.
                 </TableCell>
               </TableRow>
             ) : (

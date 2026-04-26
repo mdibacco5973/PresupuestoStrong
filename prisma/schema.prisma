@@ -114,7 +114,7 @@ model Cost {
   
   furnitureCosts FurnitureCostConfig[]
 
-  @@map("costs")
+  @@map("finishes")
 }
 
 model domicilios {
@@ -155,7 +155,7 @@ model ExtraPart {
   
   extraConfigs    FurnitureExtraConfig[]
 
-  @@map("extraparts")
+  @@map("hardware")
 }
 
 model extrassueldos {
@@ -611,7 +611,7 @@ model FurnitureCostConfig {
   furniture Furniture @relation(fields: [idFurniture], references: [id], onDelete: Cascade)
   cost      Cost      @relation(fields: [idCost], references: [id])
 
-  @@map("configurationcosts")
+  @@map("configurationfinishes")
 }
 
 model FurnitureExtraConfig {
@@ -623,7 +623,31 @@ model FurnitureExtraConfig {
   furniture Furniture @relation(fields: [idFurniture], references: [id], onDelete: Cascade)
   extraPart ExtraPart @relation(fields: [idPartExtra], references: [id])
 
-  @@map("configurationextra")
+  @@map("configurationhardware")
+}
+
+model FurnitureLaborCostConfig {
+  id          Int @id @default(autoincrement()) @map("Id")
+  idFurniture Int @map("IdFurniture")
+  idLaborCost Int @map("IdLaborCost")
+  quantity    Int @map("Quantity")
+
+  furniture Furniture @relation(fields: [idFurniture], references: [id], onDelete: Cascade)
+  laborCost LaborCost @relation(fields: [idLaborCost], references: [id])
+
+  @@map("configurationlaborcost")
+}
+
+model FurnitureAdditionalCostConfig {
+  id                Int @id @default(autoincrement()) @map("Id")
+  idFurniture       Int @map("IdFurniture")
+  idAdditionalCosts Int @map("IdAdditionalCosts")
+  quantity          Int @map("Quantity")
+
+  furniture      Furniture      @relation(fields: [idFurniture], references: [id], onDelete: Cascade)
+  additionalCost AdditionalCost @relation(fields: [idAdditionalCosts], references: [id])
+
+  @@map("configurationadditionalcosts")
 }
 
 model Furniture {
@@ -636,6 +660,8 @@ model Furniture {
   furniturePrice Decimal @map("FurniturePrice") @db.Decimal(10, 2)
   hardwarePrice  Decimal @map("HardwarePrice") @db.Decimal(10, 2)
   costPrice      Decimal @map("CostPrice") @db.Decimal(10, 2)
+  laborPrice     Decimal @default(0) @map("LaborPrice") @db.Decimal(10, 2)
+  additionalPrice Decimal @default(0) @map("AdditionalPrice") @db.Decimal(10, 2)
   furnitureTotal Decimal @map("FurnitureTotal") @db.Decimal(10, 2)
   image          Bytes?  @map("Imagen")
 
@@ -643,6 +669,8 @@ model Furniture {
   parts      FurnitureConfig[]
   extraParts FurnitureExtraConfig[]
   costs      FurnitureCostConfig[]
+  laborCosts FurnitureLaborCostConfig[]
+  additionalCosts FurnitureAdditionalCostConfig[]
   quoteDetails QuoteDetail[]
 }
 
@@ -654,4 +682,26 @@ enum account_movement_type {
 enum project_history_payment_condition {
   P_70_30    @map("70-30")
   P_70_20_10 @map("70-20-10")
+}
+
+model LaborCost {
+  id      Int      @id @default(autoincrement()) @map("Id")
+  name    String   @map("Name") @db.VarChar(200)
+  dateUpd DateTime @updatedAt @map("DateUpd")
+  price   Decimal  @map("Price") @db.Decimal(16, 2)
+
+  furnitureLaborCosts FurnitureLaborCostConfig[]
+
+  @@map("laborcost")
+}
+
+model AdditionalCost {
+  id      Int      @id @default(autoincrement()) @map("Id")
+  name    String   @map("Name") @db.VarChar(200)
+  dateUpd DateTime @updatedAt @map("DateUpd")
+  price   Decimal  @map("Price") @db.Decimal(16, 2)
+
+  furnitureAdditionalCosts FurnitureAdditionalCostConfig[]
+
+  @@map("additionalcosts")
 }

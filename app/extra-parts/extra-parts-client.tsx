@@ -131,14 +131,14 @@ export function ExtraPartsClient({ initialItems }: ExtraPartsClientProps) {
   }
 
   const handleDelete = async (id: number) => {
-    if (!confirm('¿Estás seguro de que deseas eliminar esta pieza extra?')) return
+    if (!confirm('¿Estás seguro de que deseas eliminar este herraje?')) return
     
     try {
       await deleteExtraPart(id)
       setItems(items.filter(i => i.id !== id))
     } catch (error) {
       console.error('Error deleting extra part:', error)
-      alert('Error al eliminar la pieza extra')
+      alert('Error al eliminar el herraje')
     }
   }
 
@@ -159,7 +159,7 @@ export function ExtraPartsClient({ initialItems }: ExtraPartsClientProps) {
       setEditingItem(null)
     } catch (error) {
       console.error('Error saving extra part:', error)
-      alert('Error al guardar la pieza extra')
+      alert('Error al guardar el herraje')
     } finally {
       setIsPending(false)
     }
@@ -189,7 +189,7 @@ export function ExtraPartsClient({ initialItems }: ExtraPartsClientProps) {
       <div className="flex justify-between items-center">
         <div className="flex w-full max-w-sm items-center space-x-2">
           <Input 
-            placeholder="Buscar piezas extra..." 
+            placeholder="Buscar herrajes..." 
             className="max-w-sm" 
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -199,13 +199,13 @@ export function ExtraPartsClient({ initialItems }: ExtraPartsClientProps) {
           <DialogTrigger
             render={
               <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
-                <Plus className="mr-2 h-4 w-4" /> Agregar Pieza Extra
+                <Plus className="mr-2 h-4 w-4" /> Agregar Herraje
               </Button>
             }
           />
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
-              <DialogTitle>{editingItem ? 'Editar Pieza Extra' : 'Agregar Pieza Extra'}</DialogTitle>
+              <DialogTitle>{editingItem ? 'Editar Herraje' : 'Agregar Herraje'}</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4 pt-4">
               <div className="space-y-2">
@@ -257,7 +257,7 @@ export function ExtraPartsClient({ initialItems }: ExtraPartsClientProps) {
 
               <DialogFooter>
                 <Button type="submit" disabled={isPending}>
-                  {isPending ? 'Guardando...' : 'Guardar Pieza Extra'}
+                  {isPending ? 'Guardando...' : 'Guardar Herraje'}
                 </Button>
               </DialogFooter>
             </form>
@@ -294,7 +294,7 @@ export function ExtraPartsClient({ initialItems }: ExtraPartsClientProps) {
             {paginatedItems.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
-                  No se encontraron piezas extra.
+                  No se encontraron herrajes.
                 </TableCell>
               </TableRow>
             ) : (
