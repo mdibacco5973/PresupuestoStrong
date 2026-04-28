@@ -62,7 +62,7 @@ export function WoodsClient({ initialWoods }: WoodsClientProps) {
   const sortedWoods = [...woods].sort((a, b) => {
     if (!sortConfig) return 0
     const { key, direction } = sortConfig
-    
+
     let aValue = a[key]
     let bValue = b[key]
 
@@ -215,7 +215,7 @@ export function WoodsClient({ initialWoods }: WoodsClientProps) {
     today.setHours(0, 0, 0, 0)
     const updateDate = new Date(date)
     updateDate.setHours(0, 0, 0, 0)
-    
+
     const diffTime = Math.abs(today.getTime() - updateDate.getTime())
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24))
 
@@ -230,9 +230,9 @@ export function WoodsClient({ initialWoods }: WoodsClientProps) {
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <div className="relative w-72">
-          <Input 
-            placeholder="Buscar maderas..." 
-            className="max-w-sm pr-8" 
+          <Input
+            placeholder="Buscar maderas..."
+            className="max-w-sm pr-8"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -270,7 +270,7 @@ export function WoodsClient({ initialWoods }: WoodsClientProps) {
                   required
                 />
               </div>
-              
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="thickness">Espesor (mm)</Label>
@@ -417,6 +417,9 @@ export function WoodsClient({ initialWoods }: WoodsClientProps) {
               <TableHead className="cursor-pointer hover:text-primary transition-colors font-bold text-right w-28" onClick={() => requestSort('surfaceArea')}>
                 <div className="flex items-center justify-end">Superficie <SortIcon columnKey="surfaceArea" /></div>
               </TableHead>
+              <TableHead className="cursor-pointer hover:text-primary transition-colors font-bold w-24" onClick={() => requestSort('isDefaultWood')}>
+                <div className="flex items-center justify-center">Default<SortIcon columnKey="isDefaultWood" /></div>
+              </TableHead>
               <TableHead className="cursor-pointer hover:text-primary transition-colors font-bold w-24" onClick={() => requestSort('dateUpd')}>
                 <div className="flex items-center">Recordatorio <SortIcon columnKey="dateUpd" /></div>
               </TableHead>
@@ -447,7 +450,9 @@ export function WoodsClient({ initialWoods }: WoodsClientProps) {
                   </TableCell>
                   <TableCell className="text-right py-2 whitespace-nowrap">
                     {wood.surfaceArea.toLocaleString('es-AR')} mm²
-                    {wood.isDefaultWood && <span className="ml-1 text-[9px] bg-amber-100 text-amber-700 px-1 py-0.5 rounded-full uppercase font-bold">Def.</span>}
+                  </TableCell>
+                  <TableCell className="text-center py-2 whitespace-nowrap">
+                    {wood.isDefaultWood && <span className="ml-1 text-[9px] bg-amber-100 text-amber-700 px-1 py-0.5 rounded-full uppercase font-bold">Default</span>}
                   </TableCell>
                   <TableCell className="py-2">
                     {(() => {
