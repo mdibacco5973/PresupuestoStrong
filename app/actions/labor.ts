@@ -15,6 +15,7 @@ export async function getLaborCosts() {
     })
     return items.map(item => ({
       ...item,
+      id: item.id.toString(),
       price: Number(item.price)
     }))
   } catch (error) {
@@ -33,6 +34,7 @@ export async function createLaborCost(data: LaborCostInput) {
     revalidatePath('/labor')
     return {
       ...item,
+      id: item.id.toString(),
       price: Number(item.price)
     }
   } catch (error) {
@@ -41,10 +43,10 @@ export async function createLaborCost(data: LaborCostInput) {
   }
 }
 
-export async function updateLaborCost(id: number, data: LaborCostInput) {
+export async function updateLaborCost(id: number | string, data: LaborCostInput) {
   try {
     const item = await prisma.laborCost.update({
-      where: { id },
+      where: { id: BigInt(id) },
       data: {
         ...data,
       },
@@ -52,6 +54,7 @@ export async function updateLaborCost(id: number, data: LaborCostInput) {
     revalidatePath('/labor')
     return {
       ...item,
+      id: item.id.toString(),
       price: Number(item.price)
     }
   } catch (error) {
@@ -60,10 +63,10 @@ export async function updateLaborCost(id: number, data: LaborCostInput) {
   }
 }
 
-export async function deleteLaborCost(id: number) {
+export async function deleteLaborCost(id: number | string) {
   try {
     await prisma.laborCost.delete({
-      where: { id },
+      where: { id: BigInt(id) },
     })
     revalidatePath('/labor')
   } catch (error) {

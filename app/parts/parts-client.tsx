@@ -25,14 +25,14 @@ import {
 import { createPart, updatePart, deletePart, PartInput } from '@/app/actions/part'
 
 interface PartsClientProps {
-  initialParts: Part[]
+  initialParts: any[]
 }
 
 export function PartsClient({ initialParts }: PartsClientProps) {
-  const [parts, setParts] = useState<Part[]>(initialParts)
+  const [parts, setParts] = useState<any[]>(initialParts)
   const [sortConfig, setSortConfig] = useState<{ key: keyof Part; direction: 'asc' | 'desc' } | null>(null)
   const [isOpen, setIsOpen] = useState(false)
-  const [editingPart, setEditingPart] = useState<Part | null>(null)
+  const [editingPart, setEditingPart] = useState<any | null>(null)
   const [isPending, setIsPending] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
@@ -76,11 +76,12 @@ export function PartsClient({ initialParts }: PartsClientProps) {
       part.name.toLowerCase().includes(searchLower) ||
       (part.isEdges && 'cantos'.includes(searchLower)) ||
       (part.isCabinetWood && 'cuerpo'.includes(searchLower)) ||
-      (part.isBaseCabinetWood && 'bajo mesada'.includes(searchLower)) ||
-      (part.isWallCabinetWood && 'alacena'.includes(searchLower)) ||
+      (part.isBaseCabinetWood && 'bajos'.includes(searchLower)) ||
+      (part.isWallCabinetWood && 'altos'.includes(searchLower)) ||
       (part.isBackPanel && 'fondo'.includes(searchLower)) ||
       (part.isDrawer && 'cajón'.includes(searchLower)) ||
-      (part.isLacquered && 'laqueado'.includes(searchLower))
+      (part.isLacquered && 'laqueado'.includes(searchLower)) ||
+      (part.isFront && 'frente'.includes(searchLower))
     )
   })
 
@@ -103,6 +104,7 @@ export function PartsClient({ initialParts }: PartsClientProps) {
     isBackPanel: false,
     isDrawer: false,
     isLacquered: false,
+    isFront: false,
     formulaLength: '',
     formulaWidth: '',
   })
@@ -125,6 +127,7 @@ export function PartsClient({ initialParts }: PartsClientProps) {
       isBackPanel: false,
       isDrawer: false,
       isLacquered: false,
+      isFront: false,
       formulaLength: '',
       formulaWidth: '',
     })
@@ -133,29 +136,30 @@ export function PartsClient({ initialParts }: PartsClientProps) {
   const handleEdit = (part: Part) => {
     setEditingPart(part)
     setFormData({
-      name: part.name,
-      isEdges: part.isEdges,
-      isCabinetWood: part.isCabinetWood,
-      isBaseCabinetWood: part.isBaseCabinetWood,
-      isWallCabinetWood: part.isWallCabinetWood,
-      isBackPanel: part.isBackPanel,
-      isDrawer: part.isDrawer,
-      isLacquered: part.isLacquered,
+      name: part.name || '',
+      isEdges: part.isEdges ?? false,
+      isCabinetWood: part.isCabinetWood ?? false,
+      isBaseCabinetWood: part.isBaseCabinetWood ?? false,
+      isWallCabinetWood: part.isWallCabinetWood ?? false,
+      isBackPanel: part.isBackPanel ?? false,
+      isDrawer: part.isDrawer ?? false,
+      isLacquered: part.isLacquered ?? false,
+      isFront: part.isFront ?? false,
       formulaLength: part.formulaLength || '',
       formulaWidth: part.formulaWidth || '',
     })
     setIsOpen(true)
   }
 
-  const handleDelete = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this part?')) return
+  const handleDelete = async (id: number | string) => {
+    if (!confirm('¿Estás seguro de que deseas eliminar esta pieza?')) return
     
     try {
       await deletePart(id)
       setParts(parts.filter(p => p.id !== id))
     } catch (error) {
       console.error('Error deleting part:', error)
-      alert('Failed to delete part')
+      alert('Error al eliminar la pieza')
     }
   }
 
@@ -176,7 +180,7 @@ export function PartsClient({ initialParts }: PartsClientProps) {
       setEditingPart(null)
     } catch (error) {
       console.error('Error saving part:', error)
-      alert('Failed to save part')
+      alert('Error al guardar la pieza')
     } finally {
       setIsPending(false)
     }
@@ -223,11 +227,11 @@ export function PartsClient({ initialParts }: PartsClientProps) {
           />
           <DialogContent className="sm:max-w-[425px] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>{editingPart ? 'Edit Part' : 'Add Part'}</DialogTitle>
+              <DialogTitle>{editingPart ? 'Editar Pieza' : 'Agregar Pieza'}</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4 pt-4">
               <div className="space-y-2">
-                <Label htmlFor="name">Name</Label>
+                <Label htmlFor="name">Nombre</Label>
                 <Input
                   id="name"
                   value={formData.name}
@@ -264,17 +268,8 @@ export function PartsClient({ initialParts }: PartsClientProps) {
               
               <div className="space-y-4 border rounded-md p-4 bg-muted/50">
                 <h4 className="font-medium text-sm">Atributos de la Pieza</h4>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      id="isEdges"
-                      checked={formData.isEdges}
-                      onChange={e => setFormData({ ...formData, isEdges: e.target.checked })}
-                      className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                    />
-                    <Label htmlFor="isEdges" className="font-normal cursor-pointer text-primary font-bold">Lleva Cantos</Label>
-                  </div>
+                <div className="grid grid-cols-3 gap-4">
+                  {/* Fila 1: Cuerpo, Frente, Cajón */}
                   <div className="flex items-center space-x-2">
                     <input
                       type="checkbox"
@@ -288,23 +283,25 @@ export function PartsClient({ initialParts }: PartsClientProps) {
                   <div className="flex items-center space-x-2">
                     <input
                       type="checkbox"
-                      id="isBaseCabinetWood"
-                      checked={formData.isBaseCabinetWood}
-                      onChange={e => setFormData({ ...formData, isBaseCabinetWood: e.target.checked })}
+                      id="isFront"
+                      checked={formData.isFront}
+                      onChange={e => setFormData({ ...formData, isFront: e.target.checked })}
                       className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
                     />
-                    <Label htmlFor="isBaseCabinetWood" className="font-normal cursor-pointer">Bajo Mesada</Label>
+                    <Label htmlFor="isFront" className="font-normal cursor-pointer">Frente</Label>
                   </div>
                   <div className="flex items-center space-x-2">
                     <input
                       type="checkbox"
-                      id="isWallCabinetWood"
-                      checked={formData.isWallCabinetWood}
-                      onChange={e => setFormData({ ...formData, isWallCabinetWood: e.target.checked })}
+                      id="isDrawer"
+                      checked={formData.isDrawer}
+                      onChange={e => setFormData({ ...formData, isDrawer: e.target.checked })}
                       className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
                     />
-                    <Label htmlFor="isWallCabinetWood" className="font-normal cursor-pointer">Alacena</Label>
+                    <Label htmlFor="isDrawer" className="font-normal cursor-pointer">Cajón</Label>
                   </div>
+
+                  {/* Fila 2: Fondo, Bajos, Altos */}
                   <div className="flex items-center space-x-2">
                     <input
                       type="checkbox"
@@ -318,12 +315,34 @@ export function PartsClient({ initialParts }: PartsClientProps) {
                   <div className="flex items-center space-x-2">
                     <input
                       type="checkbox"
-                      id="isDrawer"
-                      checked={formData.isDrawer}
-                      onChange={e => setFormData({ ...formData, isDrawer: e.target.checked })}
+                      id="isBaseCabinetWood"
+                      checked={formData.isBaseCabinetWood}
+                      onChange={e => setFormData({ ...formData, isBaseCabinetWood: e.target.checked })}
                       className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
                     />
-                    <Label htmlFor="isDrawer" className="font-normal cursor-pointer">Cajón</Label>
+                    <Label htmlFor="isBaseCabinetWood" className="font-normal cursor-pointer">Bajos</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="isWallCabinetWood"
+                      checked={formData.isWallCabinetWood}
+                      onChange={e => setFormData({ ...formData, isWallCabinetWood: e.target.checked })}
+                      className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                    />
+                    <Label htmlFor="isWallCabinetWood" className="font-normal cursor-pointer">Altos</Label>
+                  </div>
+
+                  {/* Fila 3: Lleva cantos, Laqueado */}
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="isEdges"
+                      checked={formData.isEdges}
+                      onChange={e => setFormData({ ...formData, isEdges: e.target.checked })}
+                      className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                    />
+                    <Label htmlFor="isEdges" className="font-normal cursor-pointer text-primary font-bold">Lleva Cantos</Label>
                   </div>
                   <div className="flex items-center space-x-2">
                     <input
@@ -340,7 +359,7 @@ export function PartsClient({ initialParts }: PartsClientProps) {
 
               <DialogFooter>
                 <Button type="submit" disabled={isPending}>
-                  {isPending ? 'Saving...' : 'Save Part'}
+                  {isPending ? 'Guardando...' : 'Guardar Pieza'}
                 </Button>
               </DialogFooter>
             </form>
@@ -380,11 +399,12 @@ export function PartsClient({ initialParts }: PartsClientProps) {
                     <div className="flex flex-wrap gap-1">
                       <FlagBadge active={part.isEdges} label="Cantos" />
                       <FlagBadge active={part.isCabinetWood} label="Cuerpo" />
-                      <FlagBadge active={part.isBaseCabinetWood} label="Bajo Mesada" />
-                      <FlagBadge active={part.isWallCabinetWood} label="Alacena" />
+                      <FlagBadge active={part.isBaseCabinetWood} label="Bajos" />
+                      <FlagBadge active={part.isWallCabinetWood} label="Altos" />
                       <FlagBadge active={part.isBackPanel} label="Fondo" />
                       <FlagBadge active={part.isDrawer} label="Cajón" />
                       <FlagBadge active={part.isLacquered} label="Laqueado" />
+                      <FlagBadge active={part.isFront} label="Frente" />
                     </div>
                   </TableCell>
                   <TableCell className="text-xs font-mono py-2">

@@ -24,11 +24,13 @@ import {
 import { createExtraPart, updateExtraPart, deleteExtraPart, ExtraPartInput } from '@/app/actions/extra-part'
 
 type ExtraPartUI = {
-  id: number
+  id: string | number
   name: string
   price: number
-  isHardwareStore: boolean
-  isAccessory: boolean
+  code?: string | null
+  quantity?: number
+  unitMeasure?: string | null
+  totalPrice?: number
   dateUpd: Date
 }
 
@@ -59,8 +61,8 @@ export function ExtraPartsClient({ initialItems }: ExtraPartsClientProps) {
     const { key, direction } = sortConfig
     const aValue = a[key]
     const bValue = b[key]
-    if (aValue === null) return 1
-    if (bValue === null) return -1
+    if (aValue === null || aValue === undefined) return 1
+    if (bValue === null || bValue === undefined) return -1
     if (aValue < bValue) return direction === 'asc' ? -1 : 1
     if (aValue > bValue) return direction === 'asc' ? 1 : -1
     return 0
@@ -79,9 +81,7 @@ export function ExtraPartsClient({ initialItems }: ExtraPartsClientProps) {
     const searchLower = searchTerm.toLowerCase()
     return (
       item.name.toLowerCase().includes(searchLower) ||
-      item.price.toString().includes(searchLower) ||
-      (item.isHardwareStore && 'ferretería'.includes(searchLower)) ||
-      (item.isAccessory && 'accesorio'.includes(searchLower))
+      item.price.toString().includes(searchLower)
     )
   })
 
@@ -98,8 +98,10 @@ export function ExtraPartsClient({ initialItems }: ExtraPartsClientProps) {
   const [formData, setFormData] = useState<ExtraPartInput>({
     name: '',
     price: 0,
-    isHardwareStore: false,
-    isAccessory: false,
+    code: '',
+    quantity: 0,
+    unitMeasure: 'un',
+    totalPrice: 0,
   })
 
   const handleOpenChange = (open: boolean) => {
@@ -114,8 +116,10 @@ export function ExtraPartsClient({ initialItems }: ExtraPartsClientProps) {
     setFormData({
       name: '',
       price: 0,
-      isHardwareStore: false,
-      isAccessory: false,
+      code: '',
+      quantity: 0,
+      unitMeasure: 'un',
+      totalPrice: 0,
     })
   }
 
@@ -124,13 +128,15 @@ export function ExtraPartsClient({ initialItems }: ExtraPartsClientProps) {
     setFormData({
       name: item.name,
       price: item.price,
-      isHardwareStore: item.isHardwareStore,
-      isAccessory: item.isAccessory,
+      code: item.code || '',
+      quantity: item.quantity || 0,
+      unitMeasure: item.unitMeasure || 'un',
+      totalPrice: item.totalPrice || 0,
     })
     setIsOpen(true)
   }
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: number | string) => {
     if (!confirm('¿Estás seguro de que deseas eliminar este herraje?')) return
     
     try {
@@ -165,14 +171,7 @@ export function ExtraPartsClient({ initialItems }: ExtraPartsClientProps) {
     }
   }
 
-  const FlagBadge = ({ active, label }: { active: boolean, label: string }) => {
-    if (!active) return null
-    return (
-      <span className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80">
-        {label}
-      </span>
-    )
-  }
+
 
   const getReminder = (date: Date) => {
     const now = new Date()
@@ -219,6 +218,24 @@ export function ExtraPartsClient({ initialItems }: ExtraPartsClientProps) {
               <DialogTitle>{editingItem ? 'Editar Herraje' : 'Agregar Herraje'}</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4 pt-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="code">Código</Label>
+                  <Input
+                    id="code"
+                    value={formData.code || ''}
+                    onChange={e => setFormData({ ...formData, code: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="unitMeasure">U.M.</Label>
+                  <Input
+                    id="unitMeasure"
+                    value={formData.unitMeasure || ''}
+                    onChange={e => setFormData({ ...formData, unitMeasure: e.target.value })}
+                  />
+                </div>
+              </div>
               <div className="space-y-2">
                 <Label htmlFor="name">Nombre</Label>
                 <Input
@@ -228,43 +245,46 @@ export function ExtraPartsClient({ initialItems }: ExtraPartsClientProps) {
                   required
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="price">Precio ($)</Label>
-                <Input
-                  id="price"
-                  type="number"
-                  step="0.01"
-                  value={formData.price}
-                  onChange={e => setFormData({ ...formData, price: parseFloat(e.target.value) || 0 })}
-                  required
-                />
-              </div>
-              
-              <div className="space-y-4 border rounded-md p-4 bg-muted/50">
-                <h4 className="font-medium text-sm">Categoría</h4>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      id="isHardwareStore"
-                      checked={formData.isHardwareStore}
-                      onChange={e => setFormData({ ...formData, isHardwareStore: e.target.checked })}
-                      className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                    />
-                    <Label htmlFor="isHardwareStore" className="font-normal cursor-pointer">Ferretería</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      id="isAccessory"
-                      checked={formData.isAccessory}
-                      onChange={e => setFormData({ ...formData, isAccessory: e.target.checked })}
-                      className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                    />
-                    <Label htmlFor="isAccessory" className="font-normal cursor-pointer">Accesorio</Label>
-                  </div>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="quantity">Cantidad</Label>
+                  <Input
+                    id="quantity"
+                    type="number"
+                    value={formData.quantity}
+                    onChange={e => {
+                      const qty = parseInt(e.target.value) || 0
+                      setFormData({ ...formData, quantity: qty, totalPrice: qty * formData.price })
+                    }}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="price">Precio Unit.</Label>
+                  <Input
+                    id="price"
+                    type="number"
+                    step="0.01"
+                    value={formData.price}
+                    onChange={e => {
+                      const price = parseFloat(e.target.value) || 0
+                      setFormData({ ...formData, price, totalPrice: (formData.quantity || 0) * price })
+                    }}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="totalPrice">Precio Total</Label>
+                  <Input
+                    id="totalPrice"
+                    type="number"
+                    step="0.01"
+                    value={formData.totalPrice}
+                    onChange={e => setFormData({ ...formData, totalPrice: parseFloat(e.target.value) || 0 })}
+                  />
                 </div>
               </div>
+              
+
 
               <DialogFooter>
                 <Button type="submit" disabled={isPending}>
@@ -280,13 +300,21 @@ export function ExtraPartsClient({ initialItems }: ExtraPartsClientProps) {
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50 text-xs">
+              <TableHead className="cursor-pointer hover:text-primary transition-colors font-bold w-24" onClick={() => requestSort('code')}>
+                <div className="flex items-center">Código <SortIcon columnKey="code" /></div>
+              </TableHead>
               <TableHead className="cursor-pointer hover:text-primary transition-colors font-bold" onClick={() => requestSort('name')}>
                 <div className="flex items-center">Nombre <SortIcon columnKey="name" /></div>
               </TableHead>
-              <TableHead className="cursor-pointer hover:text-primary transition-colors font-bold text-right w-32" onClick={() => requestSort('price')}>
-                <div className="flex items-center justify-end">Precio <SortIcon columnKey="price" /></div>
+              <TableHead className="font-bold text-center w-16">Cant.</TableHead>
+              <TableHead className="font-bold w-16 text-center">U.M.</TableHead>
+              <TableHead className="cursor-pointer hover:text-primary transition-colors font-bold text-right w-28" onClick={() => requestSort('price')}>
+                <div className="flex items-center justify-end">P. Unit. <SortIcon columnKey="price" /></div>
               </TableHead>
-              <TableHead className="font-bold">Atributos</TableHead>
+              <TableHead className="cursor-pointer hover:text-primary transition-colors font-bold text-right w-28" onClick={() => requestSort('totalPrice' as any)}>
+                <div className="flex items-center justify-end">P. Total <SortIcon columnKey={'totalPrice' as any} /></div>
+              </TableHead>
+
               <TableHead className="font-bold w-24">Recordatorio</TableHead>
               <TableHead className="text-right font-bold w-20">Acciones</TableHead>
             </TableRow>
@@ -294,21 +322,24 @@ export function ExtraPartsClient({ initialItems }: ExtraPartsClientProps) {
           <TableBody>
             {paginatedItems.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
+                <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
                   No se encontraron herrajes.
                 </TableCell>
               </TableRow>
             ) : (
               paginatedItems.map((item) => (
-                <TableRow key={item.id} className="hover:bg-muted/50 transition-colors text-xs">
-                  <TableCell className="font-medium py-2">{item.name}</TableCell>
-                  <TableCell className="text-right font-semibold text-primary py-2 whitespace-nowrap">$ {item.price.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</TableCell>
-                  <TableCell className="py-2">
-                    <div className="flex flex-wrap gap-1">
-                      <FlagBadge active={item.isHardwareStore} label="Ferretería" />
-                      <FlagBadge active={item.isAccessory} label="Accesorio" />
-                    </div>
+                <TableRow key={item.id} className="hover:bg-muted/30 transition-colors">
+                  <TableCell className="font-mono text-[11px]">{item.code || '-'}</TableCell>
+                  <TableCell className="font-medium">{item.name}</TableCell>
+                  <TableCell className="text-center">{item.quantity || 0}</TableCell>
+                  <TableCell className="text-center text-xs text-muted-foreground">{item.unitMeasure || '-'}</TableCell>
+                  <TableCell className="text-right font-mono">
+                    {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(item.price)}
                   </TableCell>
+                  <TableCell className="text-right font-mono font-bold text-primary">
+                    {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(item.totalPrice || 0)}
+                  </TableCell>
+
                   <TableCell className="py-2">
                     {(() => {
                       const reminder = getReminder(item.dateUpd)

@@ -10,7 +10,8 @@ export type WoodInput = {
   width: number | null
   price: number
   isBack: boolean
-  isDrawer: boolean
+  isCabinet: boolean
+  isFront: boolean
   surfaceArea: number
   isDefaultWood: boolean
 }
@@ -21,9 +22,10 @@ export async function getWoods() {
       orderBy: { dateUpd: 'desc' },
     })
     return woods.map(wood => ({
-      ...(wood as any),
+      ...wood,
+      id: wood.id.toString(),
       price: Number(wood.price),
-      surfaceArea: Number((wood as any).surfaceArea),
+      surfaceArea: Number(wood.surfaceArea),
     }))
   } catch (error) {
     console.error('Error fetching woods:', error)
@@ -36,7 +38,10 @@ export async function createWood(data: WoodInput) {
     const wood = await prisma.$transaction(async (tx) => {
       if (data.isDefaultWood) {
         await tx.wood.updateMany({
-          where: { isDefaultWood: true },
+          where: { 
+            isDefaultWood: true,
+            isBack: data.isBack
+          },
           data: { isDefaultWood: false },
         })
       }
@@ -49,7 +54,8 @@ export async function createWood(data: WoodInput) {
           width: data.width,
           price: data.price,
           isBack: data.isBack,
-          isDrawer: data.isDrawer,
+          isCabinet: data.isCabinet,
+          isFront: data.isFront,
           surfaceArea: data.surfaceArea,
           isDefaultWood: data.isDefaultWood,
         },
@@ -58,9 +64,10 @@ export async function createWood(data: WoodInput) {
 
     revalidatePath('/woods')
     return {
-      ...(wood as any),
+      ...wood,
+      id: wood.id.toString(),
       price: Number(wood.price),
-      surfaceArea: Number((wood as any).surfaceArea),
+      surfaceArea: Number(wood.surfaceArea),
     }
   } catch (error) {
     console.error('Error creating wood:', error)
@@ -68,21 +75,22 @@ export async function createWood(data: WoodInput) {
   }
 }
 
-export async function updateWood(id: number, data: WoodInput) {
+export async function updateWood(id: number | string, data: WoodInput) {
   try {
     const wood = await prisma.$transaction(async (tx) => {
       if (data.isDefaultWood) {
         await tx.wood.updateMany({
           where: { 
             isDefaultWood: true,
-            id: { not: id } 
+            isBack: data.isBack,
+            id: { not: BigInt(id) } 
           },
           data: { isDefaultWood: false },
         })
       }
 
       return await tx.wood.update({
-        where: { id },
+        where: { id: BigInt(id) },
         data: {
           name: data.name,
           thickness: data.thickness,
@@ -90,7 +98,8 @@ export async function updateWood(id: number, data: WoodInput) {
           width: data.width,
           price: data.price,
           isBack: data.isBack,
-          isDrawer: data.isDrawer,
+          isCabinet: data.isCabinet,
+          isFront: data.isFront,
           surfaceArea: data.surfaceArea,
           isDefaultWood: data.isDefaultWood,
         },
@@ -99,9 +108,10 @@ export async function updateWood(id: number, data: WoodInput) {
 
     revalidatePath('/woods')
     return {
-      ...(wood as any),
+      ...wood,
+      id: wood.id.toString(),
       price: Number(wood.price),
-      surfaceArea: Number((wood as any).surfaceArea),
+      surfaceArea: Number(wood.surfaceArea),
     }
   } catch (error) {
     console.error('Error updating wood:', error)
@@ -109,10 +119,10 @@ export async function updateWood(id: number, data: WoodInput) {
   }
 }
 
-export async function deleteWood(id: number) {
+export async function deleteWood(id: number | string) {
   try {
     await prisma.wood.delete({
-      where: { id },
+      where: { id: BigInt(id) },
     })
     revalidatePath('/woods')
   } catch (error) {

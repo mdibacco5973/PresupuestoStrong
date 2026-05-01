@@ -12,6 +12,7 @@ export type PartInput = {
   isBackPanel: boolean
   isDrawer: boolean
   isLacquered: boolean
+  isFront: boolean
   formulaLength?: string | null
   formulaWidth?: string | null
 }
@@ -21,7 +22,10 @@ export async function getParts() {
     const parts = await prisma.part.findMany({
       orderBy: { id: 'desc' },
     })
-    return parts
+    return parts.map(part => ({
+      ...part,
+      id: part.id.toString()
+    }))
   } catch (error) {
     console.error('Error fetching parts:', error)
     throw new Error('Failed to fetch parts')
@@ -36,33 +40,39 @@ export async function createPart(data: PartInput) {
       },
     })
     revalidatePath('/parts')
-    return part
+    return {
+      ...part,
+      id: part.id.toString()
+    }
   } catch (error) {
     console.error('Error creating part:', error)
     throw new Error('Failed to create part')
   }
 }
 
-export async function updatePart(id: number, data: PartInput) {
+export async function updatePart(id: number | string, data: PartInput) {
   try {
     const part = await prisma.part.update({
-      where: { id },
+      where: { id: BigInt(id) },
       data: {
         ...data,
       },
     })
     revalidatePath('/parts')
-    return part
+    return {
+      ...part,
+      id: part.id.toString()
+    }
   } catch (error) {
     console.error('Error updating part:', error)
     throw new Error('Failed to update part')
   }
 }
 
-export async function deletePart(id: number) {
+export async function deletePart(id: number | string) {
   try {
     await prisma.part.delete({
-      where: { id },
+      where: { id: BigInt(id) },
     })
     revalidatePath('/parts')
   } catch (error) {

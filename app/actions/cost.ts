@@ -15,6 +15,7 @@ export async function getCosts() {
     })
     return items.map(item => ({
       ...item,
+      id: item.id.toString(),
       price: Number(item.price)
     }))
   } catch (error) {
@@ -33,6 +34,7 @@ export async function createCost(data: CostInput) {
     revalidatePath('/costs')
     return {
       ...item,
+      id: item.id.toString(),
       price: Number(item.price)
     }
   } catch (error) {
@@ -41,10 +43,10 @@ export async function createCost(data: CostInput) {
   }
 }
 
-export async function updateCost(id: number, data: CostInput) {
+export async function updateCost(id: number | string, data: CostInput) {
   try {
     const item = await prisma.cost.update({
-      where: { id },
+      where: { id: BigInt(id) },
       data: {
         ...data,
       },
@@ -52,6 +54,7 @@ export async function updateCost(id: number, data: CostInput) {
     revalidatePath('/costs')
     return {
       ...item,
+      id: item.id.toString(),
       price: Number(item.price)
     }
   } catch (error) {
@@ -60,10 +63,10 @@ export async function updateCost(id: number, data: CostInput) {
   }
 }
 
-export async function deleteCost(id: number) {
+export async function deleteCost(id: number | string) {
   try {
     await prisma.cost.delete({
-      where: { id },
+      where: { id: BigInt(id) },
     })
     revalidatePath('/costs')
   } catch (error) {

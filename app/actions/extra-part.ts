@@ -6,8 +6,10 @@ import { revalidatePath } from 'next/cache'
 export type ExtraPartInput = {
   name: string
   price: number
-  isHardwareStore: boolean
-  isAccessory: boolean
+  code?: string | null
+  quantity?: number
+  unitMeasure?: string | null
+  totalPrice?: number
 }
 
 export async function getExtraParts() {
@@ -17,7 +19,9 @@ export async function getExtraParts() {
     })
     return items.map(item => ({
       ...item,
-      price: Number(item.price)
+      id: item.id.toString(),
+      price: Number(item.price),
+      totalPrice: Number(item.totalPrice || 0)
     }))
   } catch (error) {
     console.error('Error fetching extra parts:', error)
@@ -35,7 +39,9 @@ export async function createExtraPart(data: ExtraPartInput) {
     revalidatePath('/extra-parts')
     return {
       ...item,
-      price: Number(item.price)
+      id: item.id.toString(),
+      price: Number(item.price),
+      totalPrice: Number(item.totalPrice || 0)
     }
   } catch (error) {
     console.error('Error creating extra part:', error)
@@ -43,10 +49,10 @@ export async function createExtraPart(data: ExtraPartInput) {
   }
 }
 
-export async function updateExtraPart(id: number, data: ExtraPartInput) {
+export async function updateExtraPart(id: number | string, data: ExtraPartInput) {
   try {
     const item = await prisma.extraPart.update({
-      where: { id },
+      where: { id: BigInt(id) },
       data: {
         ...data,
       },
@@ -54,7 +60,9 @@ export async function updateExtraPart(id: number, data: ExtraPartInput) {
     revalidatePath('/extra-parts')
     return {
       ...item,
-      price: Number(item.price)
+      id: item.id.toString(),
+      price: Number(item.price),
+      totalPrice: Number(item.totalPrice || 0)
     }
   } catch (error) {
     console.error('Error updating extra part:', error)
@@ -62,10 +70,10 @@ export async function updateExtraPart(id: number, data: ExtraPartInput) {
   }
 }
 
-export async function deleteExtraPart(id: number) {
+export async function deleteExtraPart(id: number | string) {
   try {
     await prisma.extraPart.delete({
-      where: { id },
+      where: { id: BigInt(id) },
     })
     revalidatePath('/extra-parts')
   } catch (error) {

@@ -24,7 +24,7 @@ import {
 import { createAdditionalCost, updateAdditionalCost, deleteAdditionalCost, AdditionalCostInput } from '@/app/actions/extra'
 
 type AdditionalCostUI = {
-  id: number
+  id: string | number
   name: string
   price: number
   dateUpd: Date
@@ -73,7 +73,7 @@ export function ExtrasClient({ initialItems }: ExtrasClientProps) {
     setIsOpen(true)
   }
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: number | string) => {
     if (!confirm('¿Estás seguro de que deseas eliminar este extra?')) return
     
     try {

@@ -142,7 +142,7 @@ export function FurnitureClient({ initialItems, parts, extraParts, costs, laborC
     setIsOpen(true)
   }
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: number | string) => {
     if (!confirm('¿Estás seguro de que deseas eliminar este mueble?')) return
     try {
       await deleteFurniture(id)
@@ -652,7 +652,7 @@ export function FurnitureClient({ initialItems, parts, extraParts, costs, laborC
                               <select 
                                 className="w-full bg-transparent border-none focus:ring-0 text-sm"
                                 value={p.idPart} 
-                                onChange={e => updatePartConfig(idx, 'idPart', parseInt(e.target.value))}
+                                onChange={e => updatePartConfig(idx, 'idPart', e.target.value)}
                               >
                                 {parts.map(part => {
                                   const isSelected = formData.parts.some((p2, i2) => i2 !== idx && p2.idPart === part.id)
@@ -776,7 +776,7 @@ export function FurnitureClient({ initialItems, parts, extraParts, costs, laborC
                               <select 
                                 className="w-full bg-transparent border-none focus:ring-0 text-sm"
                                 value={ep.idPartExtra} 
-                                onChange={e => updateExtraConfig(idx, 'idPartExtra', parseInt(e.target.value))}
+                                onChange={e => updateExtraConfig(idx, 'idPartExtra', e.target.value)}
                               >
                                 {extraParts.map(item => {
                                   const isSelected = formData.extraParts.some((p2, i2) => i2 !== idx && p2.idPartExtra === item.id)
@@ -845,7 +845,7 @@ export function FurnitureClient({ initialItems, parts, extraParts, costs, laborC
                               <select 
                                 className="w-full bg-transparent border-none focus:ring-0 text-sm"
                                 value={c.idCost} 
-                                onChange={e => updateCostConfig(idx, 'idCost', parseInt(e.target.value))}
+                                onChange={e => updateCostConfig(idx, 'idCost', e.target.value)}
                               >
                                 {costs.map(item => {
                                   const isSelected = formData.costs.some((c2, i2) => i2 !== idx && c2.idCost === item.id)
@@ -914,7 +914,7 @@ export function FurnitureClient({ initialItems, parts, extraParts, costs, laborC
                               <select 
                                 className="w-full bg-transparent border-none focus:ring-0 text-sm"
                                 value={l.idLaborCost} 
-                                onChange={e => updateLaborCostConfig(idx, 'idLaborCost', parseInt(e.target.value))}
+                                onChange={e => updateLaborCostConfig(idx, 'idLaborCost', e.target.value)}
                               >
                                 {laborCosts.map(item => {
                                   const isSelected = formData.laborCosts.some((l2, i2) => i2 !== idx && l2.idLaborCost === item.id)
@@ -983,7 +983,7 @@ export function FurnitureClient({ initialItems, parts, extraParts, costs, laborC
                               <select 
                                 className="w-full bg-transparent border-none focus:ring-0 text-sm"
                                 value={a.idAdditionalCosts} 
-                                onChange={e => updateAdditionalCostConfig(idx, 'idAdditionalCosts', parseInt(e.target.value))}
+                                onChange={e => updateAdditionalCostConfig(idx, 'idAdditionalCosts', e.target.value)}
                               >
                                 {additionalCosts.map(item => {
                                   const isSelected = formData.additionalCosts.some((a2, i2) => i2 !== idx && a2.idAdditionalCosts === item.id)

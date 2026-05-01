@@ -4,7 +4,7 @@ import prisma from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
 
 export type FurnitureConfigInput = {
-  idPart: number
+  idPart: number | string
   quantity: number
   edges1: boolean
   edges2: boolean
@@ -15,22 +15,22 @@ export type FurnitureConfigInput = {
 }
 
 export type FurnitureExtraConfigInput = {
-  idPartExtra: number
+  idPartExtra: number | string
   quantity: number
 }
 
 export type FurnitureCostConfigInput = {
-  idCost: number
+  idCost: number | string
   quantity: number
 }
 
 export type FurnitureLaborCostConfigInput = {
-  idLaborCost: number
+  idLaborCost: number | string
   quantity: number
 }
 
 export type FurnitureAdditionalCostConfigInput = {
-  idAdditionalCosts: number
+  idAdditionalCosts: number | string
   quantity: number
 }
 
@@ -85,6 +85,7 @@ export async function getFurnitures() {
 
       return {
         ...item,
+        id: item.id.toString(),
         furniturePrice: Number(item.furniturePrice),
         hardwarePrice: hardwareTotal,
         costPrice: costTotal,
@@ -94,23 +95,38 @@ export async function getFurnitures() {
         image: item.image ? Buffer.from(item.image).toString('base64') : null,
         parts: item.parts.map(p => ({ 
           ...p,
+          id: p.id.toString(),
+          idFurniture: p.idFurniture.toString(),
+          idPart: p.idPart.toString(),
           edgeSize: Number(p.edgeSize)
         })),
         extraParts: item.extraParts.map(ep => ({ 
           ...ep,
-          extraPart: ep.extraPart ? { ...ep.extraPart, price: Number(ep.extraPart.price) } : null
+          id: ep.id.toString(),
+          idFurniture: ep.idFurniture.toString(),
+          idPartExtra: ep.idPartExtra.toString(),
+          extraPart: ep.extraPart ? { ...ep.extraPart, id: ep.extraPart.id.toString(), price: Number(ep.extraPart.price) } : null
         })),
         costs: item.costs.map(c => ({ 
           ...c,
-          cost: c.cost ? { ...c.cost, price: Number(c.cost.price) } : null
+          id: c.id.toString(),
+          idFurniture: c.idFurniture.toString(),
+          idCost: c.idCost.toString(),
+          cost: c.cost ? { ...c.cost, id: c.cost.id.toString(), price: Number(c.cost.price) } : null
         })),
         laborCosts: item.laborCosts.map(l => ({
           ...l,
-          laborCost: l.laborCost ? { ...l.laborCost, price: Number(l.laborCost.price) } : null
+          id: l.id.toString(),
+          idFurniture: l.idFurniture.toString(),
+          idLaborCost: l.idLaborCost.toString(),
+          laborCost: l.laborCost ? { ...l.laborCost, id: l.laborCost.id.toString(), price: Number(l.laborCost.price) } : null
         })),
         additionalCosts: item.additionalCosts.map(a => ({
           ...a,
-          additionalCost: a.additionalCost ? { ...a.additionalCost, price: Number(a.additionalCost.price) } : null
+          id: a.id.toString(),
+          idFurniture: a.idFurniture.toString(),
+          idAdditionalCosts: a.idAdditionalCosts.toString(),
+          additionalCost: a.additionalCost ? { ...a.additionalCost, id: a.additionalCost.id.toString(), price: Number(a.additionalCost.price) } : null
         })),
       }
     })
@@ -143,7 +159,7 @@ export async function createFurniture(data: FurnitureInput) {
         image: imageBuffer,
         parts: {
           create: data.parts.map(p => ({
-            idPart: p.idPart,
+            idPart: BigInt(p.idPart),
             quantity: p.quantity,
             edges1: p.edges1,
             edges2: p.edges2,
@@ -155,25 +171,25 @@ export async function createFurniture(data: FurnitureInput) {
         },
         extraParts: {
           create: data.extraParts.map(ep => ({
-            idPartExtra: ep.idPartExtra,
+            idPartExtra: BigInt(ep.idPartExtra),
             quantity: ep.quantity,
           })),
         },
         costs: {
           create: data.costs.map(c => ({
-            idCost: c.idCost,
+            idCost: BigInt(c.idCost),
             quantity: c.quantity,
           })),
         },
         laborCosts: {
           create: data.laborCosts.map(l => ({
-            idLaborCost: l.idLaborCost,
+            idLaborCost: BigInt(l.idLaborCost),
             quantity: l.quantity,
           })),
         },
         additionalCosts: {
           create: data.additionalCosts.map(a => ({
-            idAdditionalCosts: a.idAdditionalCosts,
+            idAdditionalCosts: BigInt(a.idAdditionalCosts),
             quantity: a.quantity,
           })),
         },
@@ -203,20 +219,20 @@ export async function createFurniture(data: FurnitureInput) {
   }
 }
 
-export async function updateFurniture(id: number, data: FurnitureInput) {
+export async function updateFurniture(id: number | string, data: FurnitureInput) {
   try {
     const imageBuffer = data.image ? Buffer.from(data.image.split(',')[1] || data.image, 'base64') : null
 
     const item = await prisma.$transaction(async (tx) => {
       // Delete existing configs
-      await tx.furnitureConfig.deleteMany({ where: { idFurniture: id } })
-      await tx.furnitureExtraConfig.deleteMany({ where: { idFurniture: id } })
-      await tx.furnitureCostConfig.deleteMany({ where: { idFurniture: id } })
-      await tx.furnitureLaborCostConfig.deleteMany({ where: { idFurniture: id } })
-      await tx.furnitureAdditionalCostConfig.deleteMany({ where: { idFurniture: id } })
+      await tx.furnitureConfig.deleteMany({ where: { idFurniture: BigInt(id) } })
+      await tx.furnitureExtraConfig.deleteMany({ where: { idFurniture: BigInt(id) } })
+      await tx.furnitureCostConfig.deleteMany({ where: { idFurniture: BigInt(id) } })
+      await tx.furnitureLaborCostConfig.deleteMany({ where: { idFurniture: BigInt(id) } })
+      await tx.furnitureAdditionalCostConfig.deleteMany({ where: { idFurniture: BigInt(id) } })
 
       return await tx.furniture.update({
-        where: { id },
+        where: { id: BigInt(id) },
         data: {
           name: data.name,
           code: data.code,
@@ -232,7 +248,7 @@ export async function updateFurniture(id: number, data: FurnitureInput) {
           image: imageBuffer,
           parts: {
             create: data.parts.map(p => ({
-              idPart: p.idPart,
+              idPart: BigInt(p.idPart),
               quantity: p.quantity,
               edges1: p.edges1,
               edges2: p.edges2,
@@ -244,25 +260,25 @@ export async function updateFurniture(id: number, data: FurnitureInput) {
           },
           extraParts: {
             create: data.extraParts.map(ep => ({
-              idPartExtra: ep.idPartExtra,
+              idPartExtra: BigInt(ep.idPartExtra),
               quantity: ep.quantity,
             })),
           },
           costs: {
             create: data.costs.map(c => ({
-              idCost: c.idCost,
+              idCost: BigInt(c.idCost),
               quantity: c.quantity,
             })),
           },
           laborCosts: {
             create: data.laborCosts.map(l => ({
-              idLaborCost: l.idLaborCost,
+              idLaborCost: BigInt(l.idLaborCost),
               quantity: l.quantity,
             })),
           },
           additionalCosts: {
             create: data.additionalCosts.map(a => ({
-              idAdditionalCosts: a.idAdditionalCosts,
+              idAdditionalCosts: BigInt(a.idAdditionalCosts),
               quantity: a.quantity,
             })),
           },
@@ -294,10 +310,10 @@ export async function updateFurniture(id: number, data: FurnitureInput) {
   }
 }
 
-export async function deleteFurniture(id: number) {
+export async function deleteFurniture(id: number | string) {
   try {
     await prisma.furniture.delete({
-      where: { id },
+      where: { id: BigInt(id) },
     })
     revalidatePath('/furniture')
   } catch (error) {

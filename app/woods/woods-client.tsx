@@ -24,14 +24,15 @@ import {
 } from '@/components/ui/dialog'
 
 type WoodWithNumberPrice = {
-  id: number
+  id: string | number
   name: string
   thickness: number | null
   length: number | null
   width: number | null
   price: number
   isBack: boolean
-  isDrawer: boolean
+  isFront: boolean
+  isCabinet: boolean
   surfaceArea: number
   isDefaultWood: boolean
   dateUpd: Date
@@ -89,7 +90,10 @@ export function WoodsClient({ initialWoods }: WoodsClientProps) {
       (wood.thickness?.toString() || '').includes(searchLower) ||
       (wood.length?.toString() || '').includes(searchLower) ||
       (wood.width?.toString() || '').includes(searchLower) ||
-      wood.price.toString().includes(searchLower)
+      wood.price.toString().includes(searchLower) ||
+      (wood.isCabinet && 'cuerpo'.includes(searchLower)) ||
+      (wood.isBack && 'fondo'.includes(searchLower)) ||
+      (wood.isFront && 'frente'.includes(searchLower))
     )
   })
 
@@ -111,7 +115,8 @@ export function WoodsClient({ initialWoods }: WoodsClientProps) {
     width: null,
     price: 0,
     isBack: false,
-    isDrawer: false,
+    isFront: false,
+    isCabinet: false,
     surfaceArea: 0,
     isDefaultWood: false,
   })
@@ -131,7 +136,8 @@ export function WoodsClient({ initialWoods }: WoodsClientProps) {
       width: null,
       price: 0,
       isBack: false,
-      isDrawer: false,
+      isFront: false,
+      isCabinet: false,
       surfaceArea: 0,
       isDefaultWood: false,
     })
@@ -151,15 +157,16 @@ export function WoodsClient({ initialWoods }: WoodsClientProps) {
       length: wood.length,
       width: wood.width,
       price: wood.price,
-      isBack: wood.isBack,
-      isDrawer: wood.isDrawer,
+      isBack: wood.isBack ?? false,
+      isFront: wood.isFront ?? false,
+      isCabinet: wood.isCabinet ?? false,
       surfaceArea: wood.surfaceArea,
       isDefaultWood: wood.isDefaultWood,
     })
     setIsOpen(true)
   }
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: number | string) => {
     if (!confirm('Are you sure you want to delete this wood?')) return
     setIsLoading(true)
     try {
@@ -182,7 +189,7 @@ export function WoodsClient({ initialWoods }: WoodsClientProps) {
         const updated = await updateWood(editingWood.id, formData)
         setWoods((prev) =>
           prev.map((w) => {
-            if (updated.isDefaultWood && w.id !== updated.id) {
+            if (updated.isDefaultWood && w.id !== updated.id && w.isBack === updated.isBack) {
               return { ...w, isDefaultWood: false }
             }
             return w.id === editingWood.id
@@ -195,7 +202,7 @@ export function WoodsClient({ initialWoods }: WoodsClientProps) {
         setWoods((prev) => {
           const newList = [{ ...created, price: Number(created.price), surfaceArea: Number(created.surfaceArea) }, ...prev]
           if (created.isDefaultWood) {
-            return newList.map(w => w.id !== created.id ? { ...w, isDefaultWood: false } : w)
+            return newList.map(w => w.id !== created.id && w.isBack === created.isBack ? { ...w, isDefaultWood: false } : w)
           }
           return newList
         })
@@ -353,9 +360,10 @@ export function WoodsClient({ initialWoods }: WoodsClientProps) {
                       onChange={(e) => {
                         const isChecked = e.target.checked
                         if (isChecked) {
-                          const existingDefault = woods.find(w => w.isDefaultWood && w.id !== editingWood?.id)
+                          const existingDefault = woods.find(w => w.isDefaultWood && w.isBack === formData.isBack && w.id !== editingWood?.id)
                           if (existingDefault) {
-                            if (!confirm(`La madera "${existingDefault.name}" ya está marcada como predeterminada. ¿Deseas cambiarla por esta?`)) {
+                            const tipo = formData.isBack ? 'Fondo' : 'Cuerpo y Frente'
+                            if (!confirm(`La madera "${existingDefault.name}" ya está marcada como predeterminada para ${tipo}. ¿Deseas cambiarla por esta?`)) {
                               return
                             }
                           }
@@ -372,22 +380,54 @@ export function WoodsClient({ initialWoods }: WoodsClientProps) {
                 <div className="flex items-center space-x-2">
                   <input
                     type="checkbox"
-                    id="isBack"
+                    id="isCabinet"
                     className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                    checked={formData.isBack}
-                    onChange={(e) => setFormData({ ...formData, isBack: e.target.checked })}
+                    checked={formData.isCabinet}
+                    onChange={(e) => {
+                      const checked = e.target.checked
+                      setFormData({ 
+                        ...formData, 
+                        isCabinet: checked,
+                        isBack: checked ? false : formData.isBack 
+                      })
+                    }}
                   />
-                  <Label htmlFor="isBack">Es Fondo</Label>
+                  <Label htmlFor="isCabinet">Cuerpo</Label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <input
                     type="checkbox"
-                    id="isDrawer"
+                    id="isBack"
                     className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                    checked={formData.isDrawer}
-                    onChange={(e) => setFormData({ ...formData, isDrawer: e.target.checked })}
+                    checked={formData.isBack}
+                    onChange={(e) => {
+                      const checked = e.target.checked
+                      setFormData({ 
+                        ...formData, 
+                        isBack: checked,
+                        isCabinet: checked ? false : formData.isCabinet,
+                        isFront: checked ? false : formData.isFront
+                      })
+                    }}
                   />
-                  <Label htmlFor="isDrawer">Es Cajón</Label>
+                  <Label htmlFor="isBack">Fondo</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="isFront"
+                    className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                    checked={formData.isFront}
+                    onChange={(e) => {
+                      const checked = e.target.checked
+                      setFormData({ 
+                        ...formData, 
+                        isFront: checked,
+                        isBack: checked ? false : formData.isBack 
+                      })
+                    }}
+                  />
+                  <Label htmlFor="isFront">Frente</Label>
                 </div>
               </div>
 
@@ -439,8 +479,9 @@ export function WoodsClient({ initialWoods }: WoodsClientProps) {
                   <TableCell className="font-medium py-2">{wood.name}</TableCell>
                   <TableCell className="py-2">
                     {wood.thickness ? `${wood.thickness} mm` : '-'}
+                    {wood.isCabinet && <span className="ml-1 text-[9px] bg-purple-100 text-purple-700 px-1 py-0.5 rounded-full uppercase">Cuerpo</span>}
                     {wood.isBack && <span className="ml-1 text-[9px] bg-blue-100 text-blue-700 px-1 py-0.5 rounded-full uppercase">Fondo</span>}
-                    {wood.isDrawer && <span className="ml-1 text-[9px] bg-green-100 text-green-700 px-1 py-0.5 rounded-full uppercase">Cajón</span>}
+                    {wood.isFront && <span className="ml-1 text-[9px] bg-green-100 text-green-700 px-1 py-0.5 rounded-full uppercase">Frente</span>}
                   </TableCell>
                   <TableCell className="py-2 whitespace-nowrap">
                     {wood.length && wood.width ? `${wood.length}×${wood.width} mm` : '-'}

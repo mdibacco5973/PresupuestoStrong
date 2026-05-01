@@ -10,6 +10,13 @@ declare global {
 
 const prisma = globalThis.prismaGlobal ?? prismaClientSingleton()
 
-export default prisma
-
 if (process.env.NODE_ENV !== 'production') globalThis.prismaGlobal = prisma
+
+// BigInt serialization support
+if (!(BigInt.prototype as any).toJSON) {
+  (BigInt.prototype as any).toJSON = function () {
+    return this.toString()
+  }
+}
+
+export default prisma

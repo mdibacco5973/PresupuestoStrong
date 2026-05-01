@@ -24,7 +24,7 @@ import {
 import { createCost, updateCost, deleteCost, CostInput } from '@/app/actions/cost'
 
 type CostUI = {
-  id: number
+  id: string | number
   name: string
   price: number
   dateUpd: Date
@@ -73,7 +73,7 @@ export function CostsClient({ initialItems }: CostsClientProps) {
     setIsOpen(true)
   }
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: number | string) => {
     if (!confirm('¿Estás seguro de que deseas eliminar este acabado?')) return
     
     try {

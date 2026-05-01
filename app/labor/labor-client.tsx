@@ -24,7 +24,7 @@ import {
 import { createLaborCost, updateLaborCost, deleteLaborCost, LaborCostInput } from '@/app/actions/labor'
 
 type LaborCostUI = {
-  id: number
+  id: string | number
   name: string
   price: number
   dateUpd: Date
@@ -73,7 +73,7 @@ export function LaborClient({ initialItems }: LaborClientProps) {
     setIsOpen(true)
   }
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: number | string) => {
     if (!confirm('¿Estás seguro de que deseas eliminar este costo de mano de obra?')) return
     
     try {

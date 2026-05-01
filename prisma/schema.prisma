@@ -8,26 +8,28 @@ datasource db {
 }
 
 model Wood {
-  id            Int      @id @default(autoincrement()) @map("Id")
+  id            BigInt   @id @default(autoincrement()) @map("Id")
   name          String   @map("Name") @db.VarChar(200)
   thickness     Int?     @map("Thickness")
   length        Int?     @map("Length")
   width         Int?     @map("Width")
   price         Decimal  @map("Price") @db.Decimal(16, 2)
   isBack        Boolean  @default(false) @map("IsBack")
-  isDrawer      Boolean  @default(false) @map("IsDrawer")
+  isCabinet     Boolean  @default(false) @map("IsCabinet")
+  isFront       Boolean  @default(false) @map("IsFront")
   dateUpd       DateTime @updatedAt @map("DateUpd")
   surfaceArea   Decimal  @map("SurfaceArea") @db.Decimal(10, 2)
   isDefaultWood Boolean  @default(false) @map("IsDefaultWood")
-  quoteDetails  QuoteDetail[]
+  quoteParts    QuotePart[]
+  quoteWoods    QuoteWood[]
 
   @@map("woods")
 }
 
 model acciones {
-  Id        Int @id @default(autoincrement())
-  IdUsuario Int
-  IdMenu    Int
+  Id        BigInt @id @default(autoincrement())
+  IdUsuario BigInt
+  IdMenu    BigInt
 }
 
 model account_movement {
@@ -80,7 +82,7 @@ model category {
 }
 
 model clientes {
-  Id            Int     @id @default(autoincrement())
+  Id            BigInt  @id @default(autoincrement())
   NombreCliente String  @db.VarChar(500)
   Email         String? @db.VarChar(100)
   Telefono      String? @db.VarChar(100)
@@ -103,25 +105,26 @@ model Client {
 }
 
 model colores {
-  Id     Int    @id @default(autoincrement())
+  Id     BigInt @id @default(autoincrement())
   Nombre String @db.VarChar(500)
 }
 
 model Cost {
-  id      Int      @id @default(autoincrement()) @map("Id")
+  id      BigInt   @id @default(autoincrement()) @map("Id")
   name    String   @map("Name") @db.VarChar(200)
   dateUpd DateTime @updatedAt @map("DateUpd")
   price   Decimal  @map("Price") @db.Decimal(16, 2)
   
   furnitureCosts FurnitureCostConfig[]
+  quoteFinishes  QuoteFinish[]
 
   @@map("finishes")
 }
 
 model domicilios {
-  Id           Int     @id @default(autoincrement())
-  IdCliente    Int?
-  IdProveedor  Int?
+  Id           BigInt  @id @default(autoincrement())
+  IdCliente    BigInt?
+  IdProveedor  BigInt?
   Calle        String  @db.VarChar(500)
   Numero       String  @db.VarChar(8)
   Piso         String? @db.VarChar(8)
@@ -134,7 +137,7 @@ model domicilios {
 }
 
 model empleados {
-  Id       Int      @id @default(autoincrement())
+  Id       BigInt   @id @default(autoincrement())
   Nombre   String   @db.VarChar(100)
   Apellido String   @db.VarChar(100)
   Fecha    DateTime
@@ -142,72 +145,75 @@ model empleados {
 }
 
 model estados {
-  Id     Int    @id @default(autoincrement())
+  Id     BigInt @id @default(autoincrement())
   Nombre String @db.VarChar(500)
 }
 
 model ExtraPart {
-  id              Int      @id @default(autoincrement()) @map("Id")
+  id              BigInt   @id @default(autoincrement()) @map("Id")
   name            String   @map("Name") @db.VarChar(500)
   price           Decimal  @map("Price") @db.Decimal(10, 2)
-  isHardwareStore Boolean  @default(false) @map("IsHardwareStore")
-  isAccessory     Boolean  @default(false) @map("IsAccessory")
   dateUpd         DateTime @default(now()) @updatedAt @map("DateUpd")
+  code            String?  @map("Code") @db.VarChar(50)
+  quantity        Int      @default(0) @map("Quantity")
+  unitMeasure     String?  @map("UnitMeasure") @db.VarChar(20)
+  totalPrice      Decimal? @map("TotalPrice") @db.Decimal(16, 2)
   
   extraConfigs    FurnitureExtraConfig[]
+  quoteHardware   QuoteHardware[]
 
   @@map("hardware")
 }
 
 model extrassueldos {
-  Id          Int      @id @default(autoincrement())
-  IdUsuario   Int
+  Id          BigInt   @id @default(autoincrement())
+  IdUsuario   BigInt
   Descripcion String   @db.VarChar(500)
   Fecha       DateTime
   Valor       Decimal  @db.Decimal(10, 0)
 }
 
 model feriados {
-  Id          Int      @id @default(autoincrement())
+  Id          BigInt   @id @default(autoincrement())
   Fecha       DateTime
   Descripcion String   @db.VarChar(500)
 }
 
 model horasdescuentos {
-  Id          Int      @id @default(autoincrement())
-  IdUsuario   Int
+  Id          BigInt   @id @default(autoincrement())
+  IdUsuario   BigInt
   Descripcion String   @db.VarChar(500)
   Fecha       DateTime
   Horas       Decimal? @db.Decimal(16, 2)
 }
 
 model horasextras {
-  Id          Int      @id @default(autoincrement())
-  IdUsuario   Int
+  Id          BigInt   @id @default(autoincrement())
+  IdUsuario   BigInt
   Descripcion String   @db.VarChar(500)
   Fecha       DateTime
   Horas       Decimal? @db.Decimal(16, 2)
 }
 
 model horasobras {
-  Id          Int      @id @default(autoincrement())
-  IdUsuario   Int
+  Id          BigInt   @id @default(autoincrement())
+  IdUsuario   BigInt
   Descripcion String   @db.VarChar(500)
   Fecha       DateTime
   Horas       Decimal? @db.Decimal(16, 2)
 }
 
 model liquidacion {
-  Id          Int      @id @default(autoincrement())
+  Id          BigInt   @id @default(autoincrement())
   Descripcion String   @db.VarChar(500)
   Fecha       DateTime
   ValorTotal  Decimal  @default(0.00) @db.Decimal(16, 2)
 }
 
 model liquidaciondetalle {
-  Id            Int      @id @default(autoincrement())
-  IdLiquidacion Int
-  IdUsuario     Int
+  Id            BigInt   @id @default(autoincrement())
+  IdLiquidacion BigInt
+  IdUsuario     BigInt
   Descripcion   String   @db.VarChar(500)
   Fecha         DateTime
   Valor         Decimal  @default(0.00) @db.Decimal(16, 2)
@@ -216,7 +222,7 @@ model liquidaciondetalle {
 }
 
 model menues {
-  Id          Int     @id @default(autoincrement())
+  Id          BigInt  @id @default(autoincrement())
   Menu        String  @db.VarChar(250)
   Descripcion String? @db.VarChar(50)
 }
@@ -227,15 +233,15 @@ model metrics_config {
 }
 
 model monedas {
-  Id               Int     @id @default(autoincrement())
+  Id               BigInt  @id @default(autoincrement())
   DescripcionCorta String  @db.VarChar(10)
   Descripcion      String? @db.VarChar(50)
   Simbolo          String? @db.VarChar(3)
 }
 
 model muebles {
-  Id                        Int     @id @default(autoincrement())
-  idTipoMueble              Int
+  Id                        BigInt  @id @default(autoincrement())
+  idTipoMueble              BigInt
   CodigoConfiguracion       String  @db.VarChar(10)
   Codigo                    String  @db.VarChar(5)
   Nombre                    String  @db.VarChar(500)
@@ -254,7 +260,7 @@ model muebles {
 }
 
 model Part {
-  id                Int     @id @default(autoincrement()) @map("Id")
+  id                BigInt  @id @default(autoincrement()) @map("Id")
   name              String  @map("Name") @db.VarChar(500)
   isEdges           Boolean @default(false) @map("IsEdges")
   isCabinetWood     Boolean @default(false) @map("IsCabinetWood")
@@ -263,27 +269,29 @@ model Part {
   isBackPanel       Boolean @default(false) @map("IsBackPanel")
   isDrawer          Boolean @default(false) @map("IsDrawer")
   isLacquered       Boolean @default(false) @map("IsLacquered")
+  isFront           Boolean @default(false) @map("IsFront")
   formulaLength     String? @map("FormulaLength") @db.VarChar(200)
   formulaWidth      String? @map("FormulaWidth") @db.VarChar(200)
   
   furnitureConfigs  FurnitureConfig[]
+  quoteParts        QuotePart[]
 
   @@map("parts")
 }
 
 model pedidos {
-  Id            Int      @id @default(autoincrement())
+  Id            BigInt   @id @default(autoincrement())
   Fecha         DateTime
   Codigo        String   @db.VarChar(50)
-  IdClientes    Int
+  IdClientes    BigInt
   Estado        Int      @default(1)
   TipoCocina    String?  @db.VarChar(50)
   Observaciones String?  @db.LongText
-  IdProyecto    Int?
-  IdProducto1   Int?
-  IdProducto2   Int?
-  IdProducto3   Int?
-  IdProducto4   Int?
+  IdProyecto    BigInt?
+  IdProducto1   BigInt?
+  IdProducto2   BigInt?
+  IdProducto3   BigInt?
+  IdProducto4   BigInt?
   Cantidad1     Int?
   Cantidad2     Int?
   Cantidad3     Int?
@@ -291,12 +299,12 @@ model pedidos {
 }
 
 model pedidosdetalle {
-  Id               Int     @id @default(autoincrement())
-  IdPedidos        Int
-  IdTipoMueble     Int
-  IdConfiguracion  Int
-  IdMueble         Int
-  IdMadera         Int
+  Id               BigInt  @id @default(autoincrement())
+  IdPedidos        BigInt
+  IdTipoMueble     BigInt
+  IdConfiguracion  BigInt
+  IdMueble         BigInt
+  IdMadera         BigInt
   Referencia       String  @db.VarChar(200)
   Longitud         Int
   Ancho            Int
@@ -306,7 +314,7 @@ model pedidosdetalle {
   Cantos3          Int?
   Cantos4          Int?
   CantidadMuebles  Int     @default(1)
-  IdPiezas         Int     @default(0)
+  IdPiezas         BigInt  @default(0)
   SuperficieMadera Decimal @default(0.00) @db.Decimal(16, 2)
   PrecioMadera     Decimal @default(0.00) @db.Decimal(16, 2)
   SuperficiePieza  Decimal @default(0.00) @db.Decimal(16, 2)
@@ -315,9 +323,9 @@ model pedidosdetalle {
 }
 
 model pedidosmaderas {
-  Id                    Int     @id @default(autoincrement())
-  IdPedidos             Int
-  IdMadera              Int
+  Id                    BigInt  @id @default(autoincrement())
+  IdPedidos             BigInt
+  IdMadera              BigInt
   Alto                  Int
   Ancho                 Int
   Cantidad              Int
@@ -331,7 +339,7 @@ model pedidosmaderas {
 }
 
 model piezas {
-  Id         Int    @id @default(autoincrement())
+  Id         BigInt @id @default(autoincrement())
   Nombre     String @db.VarChar(500)
   Cantos     Int    @default(1) @db.TinyInt
   IsMadera1  Int    @default(0) @db.TinyInt
@@ -343,7 +351,7 @@ model piezas {
 }
 
 model piezasextra {
-  Id           Int     @id @default(autoincrement())
+  Id           BigInt  @id @default(autoincrement())
   Nombre       String  @db.VarChar(500)
   Precio       Decimal @db.Decimal(10, 2)
   IsFerreteria Int     @default(0) @db.TinyInt
@@ -351,8 +359,8 @@ model piezasextra {
 }
 
 model presupuesto {
-  Id            Int      @id @default(autoincrement())
-  IdClientes    Int
+  Id            BigInt   @id @default(autoincrement())
+  IdClientes    BigInt
   Codigo        String   @db.VarChar(50)
   Fecha         DateTime
   FechaEntrega  DateTime
@@ -363,32 +371,32 @@ model presupuesto {
   PrecioPesos   Decimal  @db.Decimal(16, 2)
   PrecioDolares Decimal  @db.Decimal(16, 2)
   Estado        Int
-  IdProducto1   Int?
-  IdProducto2   Int?
-  IdProducto3   Int?
-  IdPedidos     Int      @default(0)
-  IdProducto4   Int?     @default(6)
+  IdProducto1   BigInt?
+  IdProducto2   BigInt?
+  IdProducto3   BigInt?
+  IdPedidos     BigInt   @default(0)
+  IdProducto4   BigInt?  @default(6)
   Cantidad1     Int?
   Cantidad2     Int?
   Cantidad3     Int?
   Cantidad4     Int?
   TipoCocina    String?  @db.VarChar(50)
   Observaciones String?  @db.LongText
-  IdProyecto    Int?
+  IdProyecto    BigInt?
 }
 
 model presupuestocostos {
-  Id            Int     @id @default(autoincrement())
-  IdPresupuesto Int
+  Id            BigInt  @id @default(autoincrement())
+  IdPresupuesto BigInt
   Descripcion   String  @db.VarChar(500)
   Cantidad      Decimal @db.Decimal(16, 2)
   Pesos         Decimal @db.Decimal(16, 2)
 }
 
 model presupuestodetalle {
-  Id            Int     @id @default(autoincrement())
-  IdPresupuesto Int
-  IdMueble      Int
+  Id            BigInt  @id @default(autoincrement())
+  IdPresupuesto BigInt
+  IdMueble      BigInt
   Descripcion   String  @db.VarChar(500)
   Cantidad      Int
   Unitario      Decimal @db.Decimal(16, 2)
@@ -401,8 +409,8 @@ model presupuestodetalle {
 }
 
 model productosproveedor {
-  Id                Int      @id @default(autoincrement())
-  IdProveedor       Int?
+  Id                BigInt   @id @default(autoincrement())
+  IdProveedor       BigInt?
   Producto          String   @db.VarChar(200)
   IsMadera          Int      @db.TinyInt
   Grosor            Int?
@@ -457,7 +465,7 @@ model project_history {
 }
 
 model proveedores {
-  Id              Int     @id @default(autoincrement())
+  Id              BigInt  @id @default(autoincrement())
   NombreProveedor String  @db.VarChar(500)
   Email           String? @db.VarChar(100)
   Telefono        String? @db.VarChar(100)
@@ -467,9 +475,9 @@ model proveedores {
 }
 
 model proyectodetalle {
-  Id          Int     @id @default(autoincrement())
-  IdProyecto  Int
-  IdMueble    Int
+  Id          BigInt  @id @default(autoincrement())
+  IdProyecto  BigInt
+  IdMueble    BigInt
   Alto        Int
   Ancho       Int
   Profundidad Int
@@ -486,7 +494,7 @@ model proyectodetalle {
 }
 
 model proyectos {
-  Id            Int      @id @default(autoincrement())
+  Id            BigInt   @id @default(autoincrement())
   Codigo        String   @db.VarChar(50)
   Estado        Int
   Fecha         DateTime
@@ -498,11 +506,11 @@ model proyectos {
   Alto          Int?
   Ancho         Int?
   Profundidad   Int?
-  IdCliente     Int?
-  IdMadera1     Int?
-  IdMadera2     Int?
-  IdMadera3     Int?
-  IdMadera4     Int?
+  IdCliente     BigInt?
+  IdMadera1     BigInt?
+  IdMadera2     BigInt?
+  IdMadera3     BigInt?
+  IdMadera4     BigInt?
   Madera1Desc   String   @db.VarChar(500)
   Madera2Desc   String   @db.VarChar(500)
   Madera3Desc   String   @db.VarChar(500)
@@ -511,35 +519,88 @@ model proyectos {
 model QuoteDetail {
   id          BigInt   @id @default(autoincrement()) @map("Id")
   quoteId     BigInt?  @map("IdQuote")
-  furnitureId Int      @map("IdFurniture")
+  furnitureId BigInt   @map("IdFurniture")
   quantity    Int      @map("Quantity")
   unitPrice   Decimal  @map("UnitPrice") @db.Decimal(16, 2)
   price       Decimal  @map("Price") @db.Decimal(16, 2)
   length      Int      @map("Length")
   width       Int      @map("Width")
   depth       Int      @map("Depth")
-  woodId      Int?     @map("IdWood")
-
   quote     Quote?    @relation(fields: [quoteId], references: [id], onDelete: Cascade)
   furniture Furniture @relation(fields: [furnitureId], references: [id])
-  wood      Wood?     @relation(fields: [woodId], references: [id])
 
   @@map("quotedetails")
 }
 
-model QuoteCost {
+model QuoteAdditionalCost {
+  id               BigInt   @id @default(autoincrement()) @map("Id")
+  quoteId          BigInt?  @map("IdQuote")
+  additionalCostId BigInt?  @map("IdAdditionalCost")
+  furnitureId      BigInt   @map("IdFurniture")
+
+  quote          Quote?          @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  additionalCost AdditionalCost? @relation(fields: [additionalCostId], references: [id])
+  furniture      Furniture       @relation(fields: [furnitureId], references: [id])
+
+  @@map("quoteadditionalcosts")
+}
+
+model QuotePart {
   id          BigInt   @id @default(autoincrement()) @map("Id")
   quoteId     BigInt?  @map("IdQuote")
-  costId      BigInt?  @map("IdCosts")
-  quantity    Decimal  @map("Quantity") @db.Decimal(16, 2)
-  unitPrice   Decimal  @map("UnitPrice") @db.Decimal(16, 2)
-  price       Decimal  @map("Price") @db.Decimal(16, 2)
-  isCost      Int      @default(0) @map("IsCost") @db.TinyInt
-  isExtraPart Int      @default(0) @map("IsExtraPart") @db.TinyInt
+  partId      BigInt?  @map("IdParts")
+  furnitureId BigInt   @map("IdFurniture")
+  woodId      BigInt   @map("IdWood")
 
-  quote       Quote?   @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  quote       Quote?    @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  part        Part?     @relation(fields: [partId], references: [id])
+  furniture   Furniture @relation(fields: [furnitureId], references: [id])
+  wood        Wood      @relation(fields: [woodId], references: [id])
 
-  @@map("quotecosts")
+  @@map("quoteparts")
+}
+
+model QuoteHardware {
+  id          BigInt   @id @default(autoincrement()) @map("Id")
+  quoteId     BigInt?  @map("IdQuote")
+  hardwareId  BigInt?  @map("IdHardware")
+  furnitureId BigInt   @map("IdFurniture")
+  code        String?  @map("Code") @db.VarChar(50)
+  quantity    Int      @default(1) @map("Quantity")
+  unitMeasure String?  @map("UnitMeasure") @db.VarChar(20)
+  totalPrice  Decimal? @map("TotalPrice") @db.Decimal(16, 2)
+
+  quote       Quote?    @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  hardware    ExtraPart? @relation(fields: [hardwareId], references: [id])
+  furniture   Furniture @relation(fields: [furnitureId], references: [id])
+
+  @@map("quotehardware")
+}
+
+model QuoteFinish {
+  id          BigInt   @id @default(autoincrement()) @map("Id")
+  quoteId     BigInt?  @map("IdQuote")
+  finishId    BigInt?  @map("IdFinishes")
+  furnitureId BigInt   @map("IdFurniture")
+
+  quote       Quote?    @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  finish      Cost?     @relation(fields: [finishId], references: [id])
+  furniture   Furniture @relation(fields: [furnitureId], references: [id])
+
+  @@map("quotefinishes")
+}
+
+model QuoteLabor {
+  id          BigInt   @id @default(autoincrement()) @map("Id")
+  quoteId     BigInt?  @map("IdQuote")
+  laborId     BigInt?  @map("IdLaborcost")
+  furnitureId BigInt   @map("IdFurniture")
+
+  quote       Quote?    @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  labor       LaborCost? @relation(fields: [laborId], references: [id])
+  furniture   Furniture @relation(fields: [furnitureId], references: [id])
+
+  @@map("quotelaborcost")
 }
 
 model Quote {
@@ -554,32 +615,43 @@ model Quote {
   costDollars  Decimal  @map("CostDollars") @db.Decimal(16, 2)
   pricePesos   Decimal  @map("PricePesos") @db.Decimal(16, 2)
   priceDollars Decimal  @map("PriceDollars") @db.Decimal(16, 2)
+  profit       Decimal  @default(1.5) @map("Profit") @db.Decimal(10, 2)
   status       Int      @map("Status")
   notes        String?  @map("Notes") @db.LongText
   client       Client   @relation(fields: [clientId], references: [id])
   details      QuoteDetail[]
-  costs        QuoteCost[]
+  additionalCosts QuoteAdditionalCost[]
+  parts        QuotePart[]
+  hardware     QuoteHardware[]
+  finishes     QuoteFinish[]
+  labor        QuoteLabor[]
+  woods        QuoteWood[]
 
   @@index([clientId], map: "quotes_client_id_fkey")
   @@map("quotes")
 }
 
-model quotewoods {
-  Id                BigInt  @id
-  IdQuote           BigInt?
-  IdWood            Int
-  Quantity          Int
-  SurfaceWood       Decimal @db.Decimal(16, 2)
-  SurfaceTotalWood  Decimal @db.Decimal(16, 2)
-  PriceWood         Decimal @db.Decimal(16, 2)
-  PriceTotalWood    Decimal @db.Decimal(16, 2)
-  SurfaceTotalPiece Decimal @db.Decimal(16, 2)
-  PriceTotalPiece   Decimal @db.Decimal(16, 2)
-  QuantityCut       Int?
+model QuoteWood {
+  id                BigInt   @id @default(autoincrement()) @map("Id")
+  quoteId           BigInt?  @map("IdQuote")
+  woodId            BigInt   @map("IdWood")
+  quantity          Int      @map("Quantity")
+  surfaceWood       Decimal  @map("SurfaceWood") @db.Decimal(16, 2)
+  surfaceTotalWood  Decimal  @map("SurfaceTotalWood") @db.Decimal(16, 2)
+  priceWood         Decimal  @map("PriceWood") @db.Decimal(16, 2)
+  priceTotalWood    Decimal  @map("PriceTotalWood") @db.Decimal(16, 2)
+  surfaceTotalPiece Decimal  @map("SurfaceTotalPiece") @db.Decimal(16, 2)
+  priceTotalPiece   Decimal  @map("PriceTotalPiece") @db.Decimal(16, 2)
+  quantityCut       Int?     @map("QuantityCut")
+
+  quote Quote? @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  wood  Wood   @relation(fields: [woodId], references: [id])
+
+  @@map("quotewoods")
 }
 
 model tiposmuebles {
-  Id     Int    @id @default(autoincrement())
+  Id     BigInt @id @default(autoincrement())
   Codigo String @db.VarChar(3)
   Nombre String @db.VarChar(500)
   IsBajo Int    @default(0) @db.TinyInt
@@ -587,15 +659,15 @@ model tiposmuebles {
 }
 
 model usuarios {
-  Id       Int    @id @default(autoincrement())
+  Id       BigInt @id @default(autoincrement())
   Usuario  String @db.VarChar(100)
   Password String @db.VarChar(100)
 }
 
 model FurnitureConfig {
-  id          Int      @id @default(autoincrement()) @map("Id")
-  idFurniture Int      @map("IdFurniture")
-  idPart      Int      @map("IdPart")
+  id          BigInt   @id @default(autoincrement()) @map("Id")
+  idFurniture BigInt   @map("IdFurniture")
+  idPart      BigInt   @map("IdPart")
   quantity    Int      @map("Quantity")
   edges1      Boolean  @default(false) @map("Edges1")
   edges2      Boolean  @default(false) @map("Edges2")
@@ -611,9 +683,9 @@ model FurnitureConfig {
 }
 
 model FurnitureCostConfig {
-  id          Int @id @default(autoincrement()) @map("Id")
-  idFurniture Int @map("IdFurniture")
-  idCost      Int @map("IdCosts")
+  id          BigInt @id @default(autoincrement()) @map("Id")
+  idFurniture BigInt @map("IdFurniture")
+  idCost      BigInt @map("IdCosts")
   quantity    Int @map("Quantity")
 
   furniture Furniture @relation(fields: [idFurniture], references: [id], onDelete: Cascade)
@@ -623,9 +695,9 @@ model FurnitureCostConfig {
 }
 
 model FurnitureExtraConfig {
-  id          Int @id @default(autoincrement()) @map("Id")
-  idFurniture Int @map("IdFurniture")
-  idPartExtra Int @map("IdPartExtra")
+  id          BigInt @id @default(autoincrement()) @map("Id")
+  idFurniture BigInt @map("IdFurniture")
+  idPartExtra BigInt @map("IdPartExtra")
   quantity    Int @map("Quantity")
 
   furniture Furniture @relation(fields: [idFurniture], references: [id], onDelete: Cascade)
@@ -635,9 +707,9 @@ model FurnitureExtraConfig {
 }
 
 model FurnitureLaborCostConfig {
-  id          Int @id @default(autoincrement()) @map("Id")
-  idFurniture Int @map("IdFurniture")
-  idLaborCost Int @map("IdLaborCost")
+  id          BigInt @id @default(autoincrement()) @map("Id")
+  idFurniture BigInt @map("IdFurniture")
+  idLaborCost BigInt @map("IdLaborCost")
   quantity    Int @map("Quantity")
 
   furniture Furniture @relation(fields: [idFurniture], references: [id], onDelete: Cascade)
@@ -647,9 +719,9 @@ model FurnitureLaborCostConfig {
 }
 
 model FurnitureAdditionalCostConfig {
-  id                Int @id @default(autoincrement()) @map("Id")
-  idFurniture       Int @map("IdFurniture")
-  idAdditionalCosts Int @map("IdAdditionalCosts")
+  id                BigInt @id @default(autoincrement()) @map("Id")
+  idFurniture       BigInt @map("IdFurniture")
+  idAdditionalCosts BigInt @map("IdAdditionalCosts")
   quantity          Int @map("Quantity")
 
   furniture      Furniture      @relation(fields: [idFurniture], references: [id], onDelete: Cascade)
@@ -659,7 +731,7 @@ model FurnitureAdditionalCostConfig {
 }
 
 model Furniture {
-  id             Int     @id @default(autoincrement()) @map("Id")
+  id             BigInt  @id @default(autoincrement()) @map("Id")
   name           String  @map("Name") @db.VarChar(500)
   code           String  @map("Code") @db.VarChar(5)
   length         Int     @map("Length")
@@ -680,6 +752,11 @@ model Furniture {
   laborCosts FurnitureLaborCostConfig[]
   additionalCosts FurnitureAdditionalCostConfig[]
   quoteDetails QuoteDetail[]
+  quoteParts   QuotePart[]
+  quoteHardware QuoteHardware[]
+  quoteFinishes QuoteFinish[]
+  quoteLabor    QuoteLabor[]
+  quoteAdditionalCosts QuoteAdditionalCost[]
 }
 
 enum account_movement_type {
@@ -693,23 +770,25 @@ enum project_history_payment_condition {
 }
 
 model LaborCost {
-  id      Int      @id @default(autoincrement()) @map("Id")
+  id      BigInt   @id @default(autoincrement()) @map("Id")
   name    String   @map("Name") @db.VarChar(200)
   dateUpd DateTime @updatedAt @map("DateUpd")
   price   Decimal  @map("Price") @db.Decimal(16, 2)
 
   furnitureLaborCosts FurnitureLaborCostConfig[]
+  quoteLabor          QuoteLabor[]
 
   @@map("laborcost")
 }
 
 model AdditionalCost {
-  id      Int      @id @default(autoincrement()) @map("Id")
+  id      BigInt   @id @default(autoincrement()) @map("Id")
   name    String   @map("Name") @db.VarChar(200)
   dateUpd DateTime @updatedAt @map("DateUpd")
   price   Decimal  @map("Price") @db.Decimal(16, 2)
 
   furnitureAdditionalCosts FurnitureAdditionalCostConfig[]
+  quoteAdditionalCosts     QuoteAdditionalCost[]
 
   @@map("additionalcosts")
 }

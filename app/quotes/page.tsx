@@ -6,12 +6,13 @@ import { getCosts } from '@/app/actions/cost'
 import { getExtraParts } from '@/app/actions/extra-part'
 import { getLaborCosts } from '@/app/actions/labor'
 import { getAdditionalCosts } from '@/app/actions/extra'
+import { getParts } from '@/app/actions/part'
 import { QuotesClient } from './quotes-client'
 
 export const dynamic = 'force-dynamic'
 
 export default async function QuotesPage() {
-  const [quotes, clients, furnitures, woods, costs, extraParts, laborCosts, additionalCosts] = await Promise.all([
+  const [quotes, clients, furnitures, woods, costs, extraParts, laborCosts, additionalCosts, partsList] = await Promise.all([
     getQuotes(),
     getClients(),
     getFurnitures(),
@@ -20,6 +21,7 @@ export default async function QuotesPage() {
     getExtraParts(),
     getLaborCosts(),
     getAdditionalCosts(),
+    getParts(),
   ])
 
   return (
@@ -36,6 +38,7 @@ export default async function QuotesPage() {
         extraParts={extraParts}
         laborCosts={laborCosts}
         additionalCosts={additionalCosts}
+        partsList={partsList}
       />
     </div>
   )

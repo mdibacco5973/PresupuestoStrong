@@ -15,6 +15,7 @@ export async function getAdditionalCosts() {
     })
     return items.map(item => ({
       ...item,
+      id: item.id.toString(),
       price: Number(item.price)
     }))
   } catch (error) {
@@ -33,6 +34,7 @@ export async function createAdditionalCost(data: AdditionalCostInput) {
     revalidatePath('/extras')
     return {
       ...item,
+      id: item.id.toString(),
       price: Number(item.price)
     }
   } catch (error) {
@@ -41,10 +43,10 @@ export async function createAdditionalCost(data: AdditionalCostInput) {
   }
 }
 
-export async function updateAdditionalCost(id: number, data: AdditionalCostInput) {
+export async function updateAdditionalCost(id: number | string, data: AdditionalCostInput) {
   try {
     const item = await prisma.additionalCost.update({
-      where: { id },
+      where: { id: BigInt(id) },
       data: {
         ...data,
       },
@@ -52,6 +54,7 @@ export async function updateAdditionalCost(id: number, data: AdditionalCostInput
     revalidatePath('/extras')
     return {
       ...item,
+      id: item.id.toString(),
       price: Number(item.price)
     }
   } catch (error) {
@@ -60,10 +63,10 @@ export async function updateAdditionalCost(id: number, data: AdditionalCostInput
   }
 }
 
-export async function deleteAdditionalCost(id: number) {
+export async function deleteAdditionalCost(id: number | string) {
   try {
     await prisma.additionalCost.delete({
-      where: { id },
+      where: { id: BigInt(id) },
     })
     revalidatePath('/extras')
   } catch (error) {
