@@ -18,7 +18,7 @@ function evaluateFormula(
       .replace(/A/g, context.A.toString())
       .replace(/P/g, context.P.toString())
       .replace(/E/g, context.E.toString())
-    // eslint-disable-next-line no-new-func
+     
     const result = new Function(`return ${expression}`)()
     return Math.max(0, Math.round(result))
   } catch {

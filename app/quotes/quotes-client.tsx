@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { Plus, Pencil, Trash2, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, FileText, Calendar, DollarSign, User, Armchair, Layers, Info, CheckCircle2, AlertCircle, X } from 'lucide-react'
+import { Plus, Pencil, Trash2, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, FileText } from 'lucide-react'
 import { QuoteInput, QuoteDetailInput, QuoteAdditionalCostInput, QuotePartInput, QuoteHardwareInput, QuoteFinishInput, QuoteLaborInput, QuoteWoodInput, createQuote, updateQuote, deleteQuote } from '@/app/actions/quote'
 
 import { Button } from '@/components/ui/button'
@@ -117,13 +117,21 @@ type QuoteDetail = {
 
 interface QuotesClientProps {
   initialQuotes: Quote[]
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   clients: any[]
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   furnitures: any[]
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   woods: any[]
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   costs: any[]
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   extraParts: any[]
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   laborCosts: any[]
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   additionalCosts: any[]
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   partsList: any[]
 }
 
@@ -133,6 +141,15 @@ const STATUS_OPTIONS = [
   { value: 3, label: 'Rechazado', color: 'bg-red-100 text-red-700' },
   { value: 4, label: 'Finalizado', color: 'bg-blue-100 text-blue-700' },
 ]
+
+const SortIcon = ({ columnKey, sortConfig }: { columnKey: string, sortConfig: { key: string, direction: 'asc' | 'desc' } | null }) => {
+  if (sortConfig?.key !== columnKey) return <ArrowUpDown className="ml-2 h-4 w-4" />
+  return sortConfig.direction === 'asc' ? (
+    <ArrowUp className="ml-2 h-4 w-4 text-primary" />
+  ) : (
+    <ArrowDown className="ml-2 h-4 w-4 text-primary" />
+  )
+}
 
 export function QuotesClient({ 
   initialQuotes, 
@@ -203,10 +220,20 @@ export function QuotesClient({
 
     const totalCostPesos = totalDetailsPrice + totalAdditionalPrice + hardwareTotal + finishesTotal + laborTotal
     
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setFormData(prev => {
       const pricePesos = totalCostPesos * prev.profit
       const costDollars = prev.exchangeRate > 0 ? totalCostPesos / prev.exchangeRate : 0
       const priceDollars = prev.exchangeRate > 0 ? pricePesos / prev.exchangeRate : 0
+
+      if (
+        prev.costPesos === totalCostPesos &&
+        prev.pricePesos === pricePesos &&
+        prev.costDollars === costDollars &&
+        prev.priceDollars === priceDollars
+      ) {
+        return prev
+      }
 
       return {
         ...prev,
@@ -223,7 +250,7 @@ export function QuotesClient({
   const evaluateFormula = (formula: string, context: { L: number, A: number, P: number, E: number }) => {
     if (!formula) return 0
     try {
-      let expression = formula.toUpperCase()
+      const expression = formula.toUpperCase()
         .replace(/L/g, context.L.toString())
         .replace(/A/g, context.A.toString())
         .replace(/P/g, context.P.toString())
@@ -236,12 +263,14 @@ export function QuotesClient({
   }
 
   const woodStatsArray = useMemo(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const statsByWood = new Map<number, any>()
 
     formData.details.forEach(detail => {
       const furniture = furnitures.find(f => f.id === detail.furnitureId)
       if (!furniture || !furniture.parts) return
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       furniture.parts.forEach((p: any) => {
         const partData = p.part
         if (!partData) return
@@ -334,7 +363,7 @@ export function QuotesClient({
         priceTotalPiece: totalPiecesPrice
       }
     })
-  }, [formData.details, furnitures, woods, defaultWood])
+  }, [formData.details, formData.parts, furnitures, woods, defaultWood])
 
   const requestSort = (key: string) => {
     let direction: 'asc' | 'desc' = 'asc'
@@ -347,7 +376,9 @@ export function QuotesClient({
   const sortedQuotes = [...quotes].sort((a, b) => {
     if (!sortConfig) return 0
     const { key, direction } = sortConfig
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const aValue = (a as any)[key]
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const bValue = (b as any)[key]
 
     if (aValue === null) return 1
@@ -582,6 +613,7 @@ export function QuotesClient({
     setFormData({ ...formData, details: newDetails })
   }
 
+/*
   const addPart = () => {
     setFormData({
       ...formData,
@@ -595,13 +627,16 @@ export function QuotesClient({
       ]
     })
   }
+*/
 
+/*
   const removePart = (index: number) => {
     setFormData({
       ...formData,
       parts: formData.parts.filter((_, i) => i !== index)
     })
   }
+*/
 
   const updatePart = (index: number, updates: Partial<QuotePartInput>) => {
     const newParts = [...formData.parts]
@@ -616,6 +651,7 @@ export function QuotesClient({
       const furniture = furnitures.find(f => f.id === detail.furnitureId)
       if (!furniture || !furniture.parts) return
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       furniture.parts.forEach((p: any) => {
         const partData = p.part
         if (!partData) return
@@ -647,6 +683,7 @@ export function QuotesClient({
       const furniture = furnitures.find(f => f.id === detail.furnitureId)
       if (!furniture || !furniture.extraParts) return
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       furniture.extraParts.forEach((ep: any) => {
         if (!ep.extraPart) return
 
@@ -671,6 +708,7 @@ export function QuotesClient({
       const furniture = furnitures.find(f => f.id === detail.furnitureId)
       if (!furniture || !furniture.costs) return
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       furniture.costs.forEach((c: any) => {
         if (!c.cost) return
 
@@ -691,6 +729,7 @@ export function QuotesClient({
       const furniture = furnitures.find(f => f.id === detail.furnitureId)
       if (!furniture || !furniture.laborCosts) return
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       furniture.laborCosts.forEach((l: any) => {
         if (!l.laborCost) return
 
@@ -711,6 +750,7 @@ export function QuotesClient({
       const furniture = furnitures.find(f => f.id === detail.furnitureId)
       if (!furniture || !furniture.additionalCosts) return
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       furniture.additionalCosts.forEach((ac: any) => {
         if (!ac.additionalCost) return
 
@@ -841,23 +881,25 @@ export function QuotesClient({
     })
   }
 
-  useEffect(() => {
-    if (activeTab === 'parts' && formData.parts.length === 0 && formData.details.length > 0) {
+
+  const handleTabChange = (tab: typeof activeTab) => {
+    setActiveTab(tab)
+    if (tab === 'parts' && formData.parts.length === 0 && formData.details.length > 0) {
       syncParts()
     }
-    if (activeTab === 'hardware' && formData.hardware.length === 0 && formData.details.length > 0) {
+    if (tab === 'hardware' && formData.hardware.length === 0 && formData.details.length > 0) {
       syncHardware()
     }
-    if (activeTab === 'finishes' && formData.finishes.length === 0 && formData.details.length > 0) {
+    if (tab === 'finishes' && formData.finishes.length === 0 && formData.details.length > 0) {
       syncFinishes()
     }
-    if (activeTab === 'labor' && formData.labor.length === 0 && formData.details.length > 0) {
+    if (tab === 'labor' && formData.labor.length === 0 && formData.details.length > 0) {
       syncLabor()
     }
-    if (activeTab === 'costs' && formData.additionalCosts.length === 0 && formData.details.length > 0) {
+    if (tab === 'costs' && formData.additionalCosts.length === 0 && formData.details.length > 0) {
       syncAdditionalCosts()
     }
-  }, [activeTab])
+  }
 
   const formatCurrency = (amount: number) => {
     return amount.toLocaleString('es-AR', {
@@ -868,14 +910,7 @@ export function QuotesClient({
     })
   }
 
-  const SortIcon = ({ columnKey }: { columnKey: string }) => {
-    if (sortConfig?.key !== columnKey) return <ArrowUpDown className="ml-2 h-4 w-4" />
-    return sortConfig.direction === 'asc' ? (
-      <ArrowUp className="ml-2 h-4 w-4 text-primary" />
-    ) : (
-      <ArrowDown className="ml-2 h-4 w-4 text-primary" />
-    )
-  }
+
 
   return (
     <div className="space-y-4">
@@ -905,49 +940,49 @@ export function QuotesClient({
               <button 
                 type="button"
                 className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${activeTab === 'basic' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
-                onClick={() => setActiveTab('basic')}
+                onClick={() => handleTabChange('basic')}
               >
                 Información Básica
               </button>
               <button 
                 type="button"
                 className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${activeTab === 'items' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
-                onClick={() => setActiveTab('items')}
+                onClick={() => handleTabChange('items')}
               >
                 Muebles / Detalles ({formData.details.length})
               </button>
               <button 
                 type="button"
                 className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${activeTab === 'parts' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
-                onClick={() => setActiveTab('parts')}
+                onClick={() => handleTabChange('parts')}
               >
                 Piezas ({formData.parts.length})
               </button>
               <button 
                 type="button"
                 className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${activeTab === 'hardware' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
-                onClick={() => setActiveTab('hardware')}
+                onClick={() => handleTabChange('hardware')}
               >
                 Herrajes ({formData.hardware.length})
               </button>
               <button 
                 type="button"
                 className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${activeTab === 'finishes' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
-                onClick={() => setActiveTab('finishes')}
+                onClick={() => handleTabChange('finishes')}
               >
                 Acabados ({formData.finishes.length})
               </button>
               <button 
                 type="button"
                 className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${activeTab === 'labor' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
-                onClick={() => setActiveTab('labor')}
+                onClick={() => handleTabChange('labor')}
               >
                 Mano de obra ({formData.labor.length})
               </button>
               <button 
                 type="button"
                 className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${activeTab === 'costs' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
-                onClick={() => setActiveTab('costs')}
+                onClick={() => handleTabChange('costs')}
               >
                 Costos y Extras ({formData.additionalCosts.length})
               </button>
@@ -1580,18 +1615,18 @@ export function QuotesClient({
           <TableHeader>
             <TableRow className="bg-muted/50">
               <TableHead className="cursor-pointer font-bold" onClick={() => requestSort('code')}>
-                <div className="flex items-center">Código <SortIcon columnKey="code" /></div>
+                <div className="flex items-center">Código <SortIcon columnKey="code" sortConfig={sortConfig} /></div>
               </TableHead>
               <TableHead className="cursor-pointer font-bold" onClick={() => requestSort('client.name')}>
-                <div className="flex items-center">Cliente <SortIcon columnKey="client.name" /></div>
+                <div className="flex items-center">Cliente <SortIcon columnKey="client.name" sortConfig={sortConfig} /></div>
               </TableHead>
               <TableHead className="font-bold hidden md:table-cell">Descripción</TableHead>
               <TableHead className="cursor-pointer font-bold" onClick={() => requestSort('date')}>
-                <div className="flex items-center">Fecha <SortIcon columnKey="date" /></div>
+                <div className="flex items-center">Fecha <SortIcon columnKey="date" sortConfig={sortConfig} /></div>
               </TableHead>
               <TableHead className="text-right font-bold">Items</TableHead>
               <TableHead className="text-right font-bold cursor-pointer" onClick={() => requestSort('pricePesos')}>
-                <div className="flex items-center justify-end">Precio (ARS) <SortIcon columnKey="pricePesos" /></div>
+                <div className="flex items-center justify-end">Precio (ARS) <SortIcon columnKey="pricePesos" sortConfig={sortConfig} /></div>
               </TableHead>
               <TableHead className="text-center font-bold">Estado</TableHead>
               <TableHead className="text-right font-bold">Acciones</TableHead>

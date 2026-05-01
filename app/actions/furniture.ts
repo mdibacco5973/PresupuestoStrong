@@ -54,6 +54,7 @@ export type FurnitureInput = {
   additionalCosts: FurnitureAdditionalCostConfigInput[]
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function serializeFurniture(item: any) {
   if (!item) return null
   return {
@@ -67,6 +68,7 @@ function serializeFurniture(item: any) {
     additionalPrice: Number(item.additionalPrice),
     furnitureTotal: Number(item.furnitureTotal),
     image: item.image ? `data:image/png;base64,${Buffer.from(item.image).toString('base64')}` : null,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     parts: item.parts?.map((p: any) => ({
       ...p,
       id: p.id.toString(),
@@ -74,24 +76,28 @@ function serializeFurniture(item: any) {
       idPart: p.idPart.toString(),
       edgeSize: p.edgeSize ? Number(p.edgeSize) : null,
     })),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     extraParts: item.extraParts?.map((ep: any) => ({
       ...ep,
       id: ep.id.toString(),
       idFurniture: ep.idFurniture.toString(),
       idPartExtra: ep.idPartExtra.toString(),
     })),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     costs: item.costs?.map((c: any) => ({
       ...c,
       id: c.id.toString(),
       idFurniture: c.idFurniture.toString(),
       idCost: c.idCost.toString(),
     })),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     laborCosts: item.laborCosts?.map((l: any) => ({
       ...l,
       id: l.id.toString(),
       idFurniture: l.idFurniture.toString(),
       idLaborCost: l.idLaborCost.toString(),
     })),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     additionalCosts: item.additionalCosts?.map((a: any) => ({
       ...a,
       id: a.id.toString(),

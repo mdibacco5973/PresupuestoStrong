@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Plus, Pencil, Trash2, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { WoodInput, createWood, updateWood, deleteWood } from '@/app/actions/wood'
 
@@ -42,6 +42,15 @@ interface WoodsClientProps {
   initialWoods: WoodWithNumberPrice[]
 }
 
+const SortIcon = ({ columnKey, sortConfig }: { columnKey: string, sortConfig: { key: keyof WoodWithNumberPrice; direction: 'asc' | 'desc' } | null }) => {
+  if (sortConfig?.key !== columnKey) return <ArrowUpDown className="ml-2 h-4 w-4" />
+  return sortConfig.direction === 'asc' ? (
+    <ArrowUp className="ml-2 h-4 w-4 text-primary" />
+  ) : (
+    <ArrowDown className="ml-2 h-4 w-4 text-primary" />
+  )
+}
+
 export function WoodsClient({ initialWoods }: WoodsClientProps) {
   const [woods, setWoods] = useState<WoodWithNumberPrice[]>(initialWoods)
   const [sortConfig, setSortConfig] = useState<{ key: keyof WoodWithNumberPrice; direction: 'asc' | 'desc' } | null>(null)
@@ -64,8 +73,8 @@ export function WoodsClient({ initialWoods }: WoodsClientProps) {
     if (!sortConfig) return 0
     const { key, direction } = sortConfig
 
-    let aValue = a[key]
-    let bValue = b[key]
+    const aValue = a[key]
+    const bValue = b[key]
 
     if (aValue === null) return 1
     if (bValue === null) return -1
@@ -74,14 +83,7 @@ export function WoodsClient({ initialWoods }: WoodsClientProps) {
     return 0
   })
 
-  const SortIcon = ({ columnKey }: { columnKey: keyof WoodWithNumberPrice }) => {
-    if (sortConfig?.key !== columnKey) return <ArrowUpDown className="ml-2 h-4 w-4" />
-    return sortConfig.direction === 'asc' ? (
-      <ArrowUp className="ml-2 h-4 w-4 text-primary" />
-    ) : (
-      <ArrowDown className="ml-2 h-4 w-4 text-primary" />
-    )
-  }
+
 
   const filteredWoods = sortedWoods.filter(wood => {
     const searchLower = searchTerm.toLowerCase()
@@ -103,9 +105,7 @@ export function WoodsClient({ initialWoods }: WoodsClientProps) {
     currentPage * itemsPerPage
   )
 
-  useEffect(() => {
-    setCurrentPage(1)
-  }, [searchTerm])
+
 
 
   const [formData, setFormData] = useState<WoodInput>({
@@ -121,12 +121,7 @@ export function WoodsClient({ initialWoods }: WoodsClientProps) {
     isDefaultWood: false,
   })
 
-  useEffect(() => {
-    const area = (formData.length || 0) * (formData.width || 0)
-    if (area !== formData.surfaceArea) {
-      setFormData(prev => ({ ...prev, surfaceArea: area }))
-    }
-  }, [formData.length, formData.width, formData.surfaceArea])
+
 
   const resetForm = () => {
     setFormData({
@@ -241,14 +236,20 @@ export function WoodsClient({ initialWoods }: WoodsClientProps) {
             placeholder="Buscar maderas..."
             className="max-w-sm pr-8"
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => {
+              setSearchTerm(e.target.value)
+              setCurrentPage(1)
+            }}
           />
           {searchTerm && (
             <Button
               variant="ghost"
               size="icon"
               className="absolute right-0 top-0 h-9 w-9 text-muted-foreground hover:text-foreground hover:bg-transparent"
-              onClick={() => setSearchTerm('')}
+              onClick={() => {
+                setSearchTerm('')
+                setCurrentPage(1)
+              }}
               title="Borrar búsqueda"
             >
               <X className="h-4 w-4" />
@@ -315,12 +316,14 @@ export function WoodsClient({ initialWoods }: WoodsClientProps) {
                     id="length"
                     type="number"
                     value={formData.length || ''}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        length: e.target.value ? parseInt(e.target.value) : null,
-                      })
-                    }
+                    onChange={(e) => {
+                      const val = e.target.value ? parseInt(e.target.value) : null
+                      setFormData(prev => ({
+                        ...prev,
+                        length: val,
+                        surfaceArea: (val || 0) * (prev.width || 0)
+                      }))
+                    }}
                   />
                 </div>
                 <div className="space-y-2">
@@ -329,12 +332,14 @@ export function WoodsClient({ initialWoods }: WoodsClientProps) {
                     id="width"
                     type="number"
                     value={formData.width || ''}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        width: e.target.value ? parseInt(e.target.value) : null,
-                      })
-                    }
+                    onChange={(e) => {
+                      const val = e.target.value ? parseInt(e.target.value) : null
+                      setFormData(prev => ({
+                        ...prev,
+                        width: val,
+                        surfaceArea: (prev.length || 0) * (val || 0)
+                      }))
+                    }}
                   />
                 </div>
               </div>
@@ -445,23 +450,23 @@ export function WoodsClient({ initialWoods }: WoodsClientProps) {
           <TableHeader>
             <TableRow className="bg-muted/50 text-xs">
               <TableHead className="cursor-pointer hover:text-primary transition-colors font-bold" onClick={() => requestSort('name')}>
-                <div className="flex items-center">Nombre <SortIcon columnKey="name" /></div>
+                <div className="flex items-center">Nombre <SortIcon columnKey="name" sortConfig={sortConfig} /></div>
               </TableHead>
               <TableHead className="cursor-pointer hover:text-primary transition-colors font-bold w-24" onClick={() => requestSort('thickness')}>
-                <div className="flex items-center">Espesor <SortIcon columnKey="thickness" /></div>
+                <div className="flex items-center">Espesor <SortIcon columnKey="thickness" sortConfig={sortConfig} /></div>
               </TableHead>
               <TableHead className="font-bold w-28">Dim. (L×A)</TableHead>
               <TableHead className="cursor-pointer hover:text-primary transition-colors font-bold text-right w-28" onClick={() => requestSort('price')}>
-                <div className="flex items-center justify-end">Precio <SortIcon columnKey="price" /></div>
+                <div className="flex items-center justify-end">Precio <SortIcon columnKey="price" sortConfig={sortConfig} /></div>
               </TableHead>
               <TableHead className="cursor-pointer hover:text-primary transition-colors font-bold text-right w-28" onClick={() => requestSort('surfaceArea')}>
-                <div className="flex items-center justify-end">Superficie <SortIcon columnKey="surfaceArea" /></div>
+                <div className="flex items-center justify-end">Superficie <SortIcon columnKey="surfaceArea" sortConfig={sortConfig} /></div>
               </TableHead>
               <TableHead className="cursor-pointer hover:text-primary transition-colors font-bold w-24" onClick={() => requestSort('isDefaultWood')}>
-                <div className="flex items-center justify-center">Default<SortIcon columnKey="isDefaultWood" /></div>
+                <div className="flex items-center justify-center">Default<SortIcon columnKey="isDefaultWood" sortConfig={sortConfig} /></div>
               </TableHead>
               <TableHead className="cursor-pointer hover:text-primary transition-colors font-bold w-24" onClick={() => requestSort('dateUpd')}>
-                <div className="flex items-center">Recordatorio <SortIcon columnKey="dateUpd" /></div>
+                <div className="flex items-center">Recordatorio <SortIcon columnKey="dateUpd" sortConfig={sortConfig} /></div>
               </TableHead>
               <TableHead className="text-right font-bold w-20">Acciones</TableHead>
             </TableRow>

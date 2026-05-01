@@ -78,6 +78,7 @@ export type QuoteInput = {
   labor: QuoteLaborInput[]
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function serializeQuote(quote: any) {
   if (!quote) return null
   return {
@@ -90,6 +91,7 @@ function serializeQuote(quote: any) {
     pricePesos: Number(quote.pricePesos),
     priceDollars: Number(quote.priceDollars),
     profit: Number(quote.profit),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     details: quote.details?.map((d: any) => ({
       ...d,
       id: d.id.toString(),
@@ -98,6 +100,7 @@ function serializeQuote(quote: any) {
       unitPrice: Number(d.unitPrice),
       price: Number(d.price),
     })),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     additionalCosts: quote.additionalCosts?.map((ac: any) => ({
       ...ac,
       id: ac.id.toString(),
@@ -105,6 +108,7 @@ function serializeQuote(quote: any) {
       additionalCostId: ac.additionalCostId?.toString(),
       furnitureId: ac.furnitureId.toString(),
     })),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     woods: quote.woods?.map((w: any) => ({
       ...w,
       id: w.id.toString(),
@@ -117,6 +121,7 @@ function serializeQuote(quote: any) {
       surfaceTotalPiece: Number(w.surfaceTotalPiece),
       priceTotalPiece: Number(w.priceTotalPiece),
     })),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     parts: quote.parts?.map((p: any) => ({
       ...p,
       id: p.id.toString(),
@@ -125,6 +130,7 @@ function serializeQuote(quote: any) {
       furnitureId: p.furnitureId.toString(),
       woodId: p.woodId.toString(),
     })),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     hardware: quote.hardware?.map((h: any) => ({
       ...h,
       id: h.id.toString(),
@@ -133,6 +139,7 @@ function serializeQuote(quote: any) {
       furnitureId: h.furnitureId.toString(),
       totalPrice: h.totalPrice ? Number(h.totalPrice) : null,
     })),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     finishes: quote.finishes?.map((f: any) => ({
       ...f,
       id: f.id.toString(),
@@ -140,6 +147,7 @@ function serializeQuote(quote: any) {
       finishId: f.finishId?.toString(),
       furnitureId: f.furnitureId.toString(),
     })),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     labor: quote.labor?.map((l: any) => ({
       ...l,
       id: l.id.toString(),

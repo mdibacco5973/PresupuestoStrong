@@ -225,14 +225,14 @@ export function FurnitureClient({ initialItems, parts, extraParts, costs, laborC
     if (!formula) return 0
     try {
       // Reemplazar variables por valores
-      let expression = formula.toUpperCase()
+      const expression = formula.toUpperCase()
         .replace(/L/g, context.L.toString())
         .replace(/A/g, context.A.toString())
         .replace(/P/g, context.P.toString())
         .replace(/E/g, context.E.toString())
       
       // Evaluación simple
-      // eslint-disable-next-line no-new-func
+       
       const result = new Function(`return ${expression}`)()
       return Math.max(0, Math.round(result))
     } catch (e) {
