@@ -4,7 +4,6 @@ import prisma from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
 
 export type QuoteDetailInput = {
-  id?: string | number
   furnitureId: number | string
   quantity: number
   unitPrice: number
@@ -15,41 +14,11 @@ export type QuoteDetailInput = {
 }
 
 export type QuoteAdditionalCostInput = {
-  id?: number | string
-  additionalCostId: number | string
-  furnitureId: number | string
-}
-export type QuotePartInput = {
-  id?: number | string
-  partId: number | string
-  furnitureId: number | string
-  woodId: number | string
-}
-
-export type QuoteHardwareInput = {
-  id?: number | string
-  hardwareId: number | string
-  furnitureId: number | string
-  code?: string | null
-  quantity: number
-  unitMeasure?: string | null
-  totalPrice: number
-}
-
-export type QuoteFinishInput = {
-  id?: number | string
-  finishId: number | string
-  furnitureId: number | string
-}
-
-export type QuoteLaborInput = {
-  id?: number | string
-  laborId: number | string
+  additionalCostId: number | string | null
   furnitureId: number | string
 }
 
 export type QuoteWoodInput = {
-  id?: number | string
   woodId: number | string
   quantity: number
   surfaceWood: number
@@ -58,7 +27,32 @@ export type QuoteWoodInput = {
   priceTotalWood: number
   surfaceTotalPiece: number
   priceTotalPiece: number
-  quantityCut?: number | null
+  quantityCut: number | null
+}
+
+export type QuotePartInput = {
+  partId: number | string | null
+  furnitureId: number | string
+  woodId: number | string
+}
+
+export type QuoteHardwareInput = {
+  hardwareId: number | string | null
+  furnitureId: number | string
+  code: string | null
+  quantity: number
+  unitMeasure: string | null
+  totalPrice: number | null
+}
+
+export type QuoteFinishInput = {
+  finishId: number | string | null
+  furnitureId: number | string
+}
+
+export type QuoteLaborInput = {
+  laborId: number | string | null
+  furnitureId: number | string
 }
 
 export type QuoteInput = {
@@ -74,75 +68,44 @@ export type QuoteInput = {
   priceDollars: number
   profit: number
   status: number
-  notes?: string | null
+  notes: string | null
   details: QuoteDetailInput[]
   additionalCosts: QuoteAdditionalCostInput[]
+  woods: QuoteWoodInput[]
   parts: QuotePartInput[]
   hardware: QuoteHardwareInput[]
   finishes: QuoteFinishInput[]
   labor: QuoteLaborInput[]
-  woods: QuoteWoodInput[]
 }
 
-// Helper to serialize BigInt and Decimal
 function serializeQuote(quote: any) {
   if (!quote) return null
   return {
     ...quote,
     id: quote.id.toString(),
+    clientId: quote.clientId.toString(),
     exchangeRate: Number(quote.exchangeRate),
     costPesos: Number(quote.costPesos),
     costDollars: Number(quote.costDollars),
     pricePesos: Number(quote.pricePesos),
     priceDollars: Number(quote.priceDollars),
-    profit: Number(quote.profit || 1.5),
-    status: Number(quote.status),
-    details: (quote.details || []).map((detail: any) => ({
-      ...detail,
-      id: detail.id.toString(),
-      quoteId: detail.quoteId?.toString(),
-      furnitureId: detail.furnitureId.toString(),
-      unitPrice: Number(detail.unitPrice),
-      price: Number(detail.price)
+    profit: Number(quote.profit),
+    details: quote.details?.map((d: any) => ({
+      ...d,
+      id: d.id.toString(),
+      quoteId: d.quoteId?.toString(),
+      furnitureId: d.furnitureId.toString(),
+      unitPrice: Number(d.unitPrice),
+      price: Number(d.price),
     })),
-    additionalCosts: (quote.additionalCosts || []).map((ac: any) => ({
+    additionalCosts: quote.additionalCosts?.map((ac: any) => ({
       ...ac,
       id: ac.id.toString(),
       quoteId: ac.quoteId?.toString(),
       additionalCostId: ac.additionalCostId?.toString(),
-      furnitureId: ac.furnitureId.toString()
+      furnitureId: ac.furnitureId.toString(),
     })),
-    parts: (quote.parts || []).map((p: any) => ({
-      ...p,
-      id: p.id.toString(),
-      quoteId: p.quoteId?.toString(),
-      partId: p.partId?.toString(),
-      furnitureId: p.furnitureId.toString(),
-      woodId: p.woodId.toString()
-    })),
-    hardware: (quote.hardware || []).map((hw: any) => ({
-      ...hw,
-      id: hw.id.toString(),
-      quoteId: hw.quoteId?.toString(),
-      hardwareId: hw.hardwareId?.toString(),
-      furnitureId: hw.furnitureId.toString(),
-      totalPrice: Number(hw.totalPrice || 0)
-    })),
-    finishes: (quote.finishes || []).map((f: any) => ({
-      ...f,
-      id: f.id.toString(),
-      quoteId: f.quoteId?.toString(),
-      finishId: f.finishId?.toString(),
-      furnitureId: f.furnitureId.toString()
-    })),
-    labor: (quote.labor || []).map((l: any) => ({
-      ...l,
-      id: l.id.toString(),
-      quoteId: l.quoteId?.toString(),
-      laborId: l.laborId?.toString(),
-      furnitureId: l.furnitureId.toString()
-    })),
-    woods: (quote.woods || []).map((w: any) => ({
+    woods: quote.woods?.map((w: any) => ({
       ...w,
       id: w.id.toString(),
       quoteId: w.quoteId?.toString(),
@@ -152,41 +115,73 @@ function serializeQuote(quote: any) {
       priceWood: Number(w.priceWood),
       priceTotalWood: Number(w.priceTotalWood),
       surfaceTotalPiece: Number(w.surfaceTotalPiece),
-      priceTotalPiece: Number(w.priceTotalPiece)
-    }))
+      priceTotalPiece: Number(w.priceTotalPiece),
+    })),
+    parts: quote.parts?.map((p: any) => ({
+      ...p,
+      id: p.id.toString(),
+      quoteId: p.quoteId?.toString(),
+      partId: p.partId?.toString(),
+      furnitureId: p.furnitureId.toString(),
+      woodId: p.woodId.toString(),
+    })),
+    hardware: quote.hardware?.map((h: any) => ({
+      ...h,
+      id: h.id.toString(),
+      quoteId: h.quoteId?.toString(),
+      hardwareId: h.hardwareId?.toString(),
+      furnitureId: h.furnitureId.toString(),
+      totalPrice: h.totalPrice ? Number(h.totalPrice) : null,
+    })),
+    finishes: quote.finishes?.map((f: any) => ({
+      ...f,
+      id: f.id.toString(),
+      quoteId: f.quoteId?.toString(),
+      finishId: f.finishId?.toString(),
+      furnitureId: f.furnitureId.toString(),
+    })),
+    labor: quote.labor?.map((l: any) => ({
+      ...l,
+      id: l.id.toString(),
+      quoteId: l.quoteId?.toString(),
+      laborId: l.laborId?.toString(),
+      furnitureId: l.furnitureId.toString(),
+    })),
   }
 }
 
 export async function getQuotes() {
   const quotes = await prisma.quote.findMany({
     include: {
-      client: {
-        select: {
-          name: true,
-        },
-      },
-      details: {
-        include: {
-          furniture: {
-            select: {
-              name: true,
-              code: true,
-            }
-          }
-        }
-      },
+      client: true,
+      details: true,
       additionalCosts: true,
       parts: true,
       hardware: true,
       finishes: true,
       labor: true,
-      woods: true
+      woods: true,
     },
-    orderBy: {
-      date: 'desc',
-    },
+    orderBy: { date: 'desc' },
   })
   return quotes.map(serializeQuote)
+}
+
+export async function getQuoteById(id: string) {
+  const quote = await prisma.quote.findUnique({
+    where: { id: BigInt(id) },
+    include: {
+      client: true,
+      details: true,
+      additionalCosts: true,
+      parts: true,
+      hardware: true,
+      finishes: true,
+      labor: true,
+      woods: true,
+    },
+  })
+  return serializeQuote(quote)
 }
 
 export async function createQuote(data: QuoteInput) {
@@ -207,7 +202,7 @@ export async function createQuote(data: QuoteInput) {
       notes: data.notes,
       details: {
         create: data.details.map(detail => ({
-          furnitureId: detail.furnitureId,
+          furnitureId: BigInt(detail.furnitureId),
           quantity: detail.quantity,
           unitPrice: detail.unitPrice,
           price: detail.price,
@@ -218,13 +213,13 @@ export async function createQuote(data: QuoteInput) {
       },
       additionalCosts: {
         create: (data.additionalCosts || []).map(c => ({
-          additionalCostId: c.additionalCostId,
-          furnitureId: c.furnitureId,
+          additionalCostId: c.additionalCostId ? BigInt(c.additionalCostId) : null,
+          furnitureId: BigInt(c.furnitureId),
         }))
       },
       woods: {
         create: (data.woods || []).map(w => ({
-          woodId: w.woodId,
+          woodId: BigInt(w.woodId),
           quantity: w.quantity,
           surfaceWood: w.surfaceWood,
           surfaceTotalWood: w.surfaceTotalWood,
@@ -237,15 +232,15 @@ export async function createQuote(data: QuoteInput) {
       },
       parts: {
         create: (data.parts || []).map(part => ({
-          partId: part.partId,
-          furnitureId: part.furnitureId,
-          woodId: part.woodId,
+          partId: part.partId ? BigInt(part.partId) : null,
+          furnitureId: BigInt(part.furnitureId),
+          woodId: BigInt(part.woodId),
         }))
       },
       hardware: {
-        create: data.hardware.map(hw => ({
-          hardwareId: hw.hardwareId,
-          furnitureId: hw.furnitureId,
+        create: (data.hardware || []).map(hw => ({
+          hardwareId: hw.hardwareId ? BigInt(hw.hardwareId) : null,
+          furnitureId: BigInt(hw.furnitureId),
           code: hw.code,
           quantity: hw.quantity,
           unitMeasure: hw.unitMeasure,
@@ -254,14 +249,14 @@ export async function createQuote(data: QuoteInput) {
       },
       finishes: {
         create: (data.finishes || []).map(f => ({
-          finishId: f.finishId,
-          furnitureId: f.furnitureId,
+          finishId: f.finishId ? BigInt(f.finishId) : null,
+          furnitureId: BigInt(f.furnitureId),
         }))
       },
       labor: {
         create: (data.labor || []).map(l => ({
-          laborId: l.laborId,
-          furnitureId: l.furnitureId,
+          laborId: l.laborId ? BigInt(l.laborId) : null,
+          furnitureId: BigInt(l.furnitureId),
         }))
       }
     },
@@ -311,7 +306,7 @@ export async function updateQuote(id: string, data: QuoteInput) {
         notes: data.notes,
         details: {
           create: data.details.map(detail => ({
-            furnitureId: detail.furnitureId,
+            furnitureId: BigInt(detail.furnitureId),
             quantity: detail.quantity,
             unitPrice: detail.unitPrice,
             price: detail.price,
@@ -322,13 +317,13 @@ export async function updateQuote(id: string, data: QuoteInput) {
         },
         additionalCosts: {
           create: (data.additionalCosts || []).map(c => ({
-            additionalCostId: c.additionalCostId,
-            furnitureId: c.furnitureId,
+            additionalCostId: c.additionalCostId ? BigInt(c.additionalCostId) : null,
+            furnitureId: BigInt(c.furnitureId),
           }))
         },
         woods: {
           create: (data.woods || []).map(w => ({
-            woodId: w.woodId,
+            woodId: BigInt(w.woodId),
             quantity: w.quantity,
             surfaceWood: w.surfaceWood,
             surfaceTotalWood: w.surfaceTotalWood,
@@ -341,15 +336,15 @@ export async function updateQuote(id: string, data: QuoteInput) {
         },
         parts: {
           create: (data.parts || []).map(part => ({
-            partId: part.partId,
-            furnitureId: part.furnitureId,
-            woodId: part.woodId,
+            partId: part.partId ? BigInt(part.partId) : null,
+            furnitureId: BigInt(part.furnitureId),
+            woodId: BigInt(part.woodId),
           }))
         },
         hardware: {
           create: (data.hardware || []).map(hw => ({
-            hardwareId: hw.hardwareId,
-            furnitureId: hw.furnitureId,
+            hardwareId: hw.hardwareId ? BigInt(hw.hardwareId) : null,
+            furnitureId: BigInt(hw.furnitureId),
             code: hw.code,
             quantity: hw.quantity,
             unitMeasure: hw.unitMeasure,
@@ -358,14 +353,14 @@ export async function updateQuote(id: string, data: QuoteInput) {
         },
         finishes: {
           create: (data.finishes || []).map(f => ({
-            finishId: f.finishId,
-            furnitureId: f.furnitureId,
+            finishId: f.finishId ? BigInt(f.finishId) : null,
+            furnitureId: BigInt(f.furnitureId),
           }))
         },
         labor: {
           create: (data.labor || []).map(l => ({
-            laborId: l.laborId,
-            furnitureId: l.furnitureId,
+            laborId: l.laborId ? BigInt(l.laborId) : null,
+            furnitureId: BigInt(l.furnitureId),
           }))
         }
       },
@@ -380,14 +375,15 @@ export async function updateQuote(id: string, data: QuoteInput) {
       }
     })
   })
-  
+
   revalidatePath('/quotes')
   return serializeQuote(updated)
 }
 
 export async function deleteQuote(id: string) {
+  const quoteId = BigInt(id)
   await prisma.quote.delete({
-    where: { id: BigInt(id) },
+    where: { id: quoteId },
   })
   revalidatePath('/quotes')
 }

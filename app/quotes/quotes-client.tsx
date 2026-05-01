@@ -432,12 +432,12 @@ export function QuotesClient({
       })),
       additionalCosts: (quote.additionalCosts || []).map(c => ({
         id: c.id,
-        additionalCostId: c.additionalCostId,
+        additionalCostId: c.additionalCostId ?? null,
         furnitureId: c.furnitureId
       })),
       parts: (quote.parts || []).map(p => ({
         id: p.id,
-        partId: p.partId,
+        partId: p.partId ?? null,
         furnitureId: p.furnitureId,
         woodId: p.woodId
       })),
@@ -445,19 +445,19 @@ export function QuotesClient({
         id: hw.id,
         hardwareId: hw.hardwareId,
         furnitureId: hw.furnitureId,
-        code: hw.code,
+        code: hw.code ?? null,
         quantity: hw.quantity,
-        unitMeasure: hw.unitMeasure,
+        unitMeasure: hw.unitMeasure ?? null,
         totalPrice: hw.totalPrice
       })),
       finishes: (quote.finishes || []).map(f => ({
         id: f.id,
-        finishId: f.finishId,
+        finishId: f.finishId ?? null,
         furnitureId: f.furnitureId
       })),
       labor: (quote.labor || []).map(l => ({
         id: l.id,
-        laborId: l.laborId,
+        laborId: l.laborId ?? null,
         furnitureId: l.furnitureId
       })),
       woods: (quote.woods || []).map(w => ({
@@ -470,7 +470,7 @@ export function QuotesClient({
         priceTotalWood: w.priceTotalWood,
         surfaceTotalPiece: w.surfaceTotalPiece,
         priceTotalPiece: w.priceTotalPiece,
-        quantityCut: w.quantityCut
+        quantityCut: w.quantityCut ?? null
       }))
     })
     setIsOpen(true)
@@ -808,7 +808,7 @@ export function QuotesClient({
     })
   }
 
-  const updateHardwareId = (index: number, hardwareId: number) => {
+  const updateHardwareId = (index: number, hardwareId: string | number) => {
     const hwData = extraParts.find(p => p.id === hardwareId)
     updateHardware(index, { 
       hardwareId, 
@@ -817,7 +817,7 @@ export function QuotesClient({
     })
   }
 
-  const updateFinishId = (index: number, finishId: number) => {
+  const updateFinishId = (index: number, finishId: string | number) => {
     setFormData(prev => {
       const newFinishes = [...prev.finishes]
       newFinishes[index] = { ...newFinishes[index], finishId }
@@ -825,7 +825,7 @@ export function QuotesClient({
     })
   }
 
-  const updateLaborId = (index: number, laborId: number) => {
+  const updateLaborId = (index: number, laborId: string | number) => {
     setFormData(prev => {
       const newLabor = [...prev.labor]
       newLabor[index] = { ...newLabor[index], laborId }
@@ -833,7 +833,7 @@ export function QuotesClient({
     })
   }
 
-  const updateAdditionalCostId = (index: number, additionalCostId: number) => {
+  const updateAdditionalCostId = (index: number, additionalCostId: string | number) => {
     setFormData(prev => {
       const newAdditionalCosts = [...prev.additionalCosts]
       newAdditionalCosts[index] = { ...newAdditionalCosts[index], additionalCostId }
@@ -1082,7 +1082,7 @@ export function QuotesClient({
                               <select 
                                 className="w-full bg-transparent border-none focus:ring-0 text-sm"
                                 value={detail.furnitureId} 
-                                onChange={e => updateDetail(idx, { furnitureId: parseInt(e.target.value) })}
+                                onChange={e => updateDetail(idx, { furnitureId: e.target.value })}
                               >
                                 {furnitures.map(f => (
                                   <option key={f.id} value={f.id}>
@@ -1164,9 +1164,9 @@ export function QuotesClient({
                               <select 
                                 className="w-full bg-transparent border-none focus:ring-0 text-sm"
                                 value={part.woodId} 
-                                onChange={e => updatePart(idx, { woodId: parseInt(e.target.value) })}
+                                onChange={e => updatePart(idx, { woodId: e.target.value })}
                               >
-                                <option value={0} disabled>Seleccione una madera...</option>
+                                <option value="" disabled>Seleccione una madera...</option>
                                 {woods.map(w => (
                                   <option key={w.id} value={w.id}>
                                     {w.name}
@@ -1271,8 +1271,8 @@ export function QuotesClient({
                               <TableCell>
                                 <select
                                   className="flex h-8 w-full rounded-md border border-input bg-transparent px-2 py-1 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                                  value={hw.hardwareId}
-                                  onChange={(e) => updateHardwareId(idx, Number(e.target.value))}
+                                  value={hw.hardwareId ?? 0}
+                                  onChange={(e) => updateHardwareId(idx, e.target.value)}
                                 >
                                   <option value={0} disabled>Seleccione herraje...</option>
                                   {extraParts.map(p => (
@@ -1308,7 +1308,7 @@ export function QuotesClient({
                                 {hardwareData ? formatCurrency(Number(hardwareData.price)) : '-'}
                               </TableCell>
                               <TableCell className="text-sm text-right font-bold text-primary">
-                                {formatCurrency(hw.totalPrice)}
+                                {formatCurrency(hw.totalPrice ?? 0)}
                               </TableCell>
                               <TableCell>
                                 <Button
@@ -1370,8 +1370,8 @@ export function QuotesClient({
                               <TableCell>
                                 <select
                                   className="flex h-8 w-full rounded-md border border-input bg-transparent px-2 py-1 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                                  value={f.finishId}
-                                  onChange={(e) => updateFinishId(idx, Number(e.target.value))}
+                                  value={f.finishId ?? 0}
+                                  onChange={(e) => updateFinishId(idx, e.target.value)}
                                 >
                                   {costs.map(c => (
                                     <option key={c.id} value={c.id}>
@@ -1446,8 +1446,8 @@ export function QuotesClient({
                               <TableCell>
                                 <select
                                   className="flex h-8 w-full rounded-md border border-input bg-transparent px-2 py-1 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                                  value={l.laborId}
-                                  onChange={(e) => updateLaborId(idx, Number(e.target.value))}
+                                  value={l.laborId ?? 0}
+                                  onChange={(e) => updateLaborId(idx, e.target.value)}
                                 >
                                   {laborCosts.map(lc => (
                                     <option key={lc.id} value={lc.id}>
@@ -1522,8 +1522,8 @@ export function QuotesClient({
                               <TableCell>
                                 <select
                                   className="flex h-8 w-full rounded-md border border-input bg-transparent px-2 py-1 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                                  value={c.additionalCostId}
-                                  onChange={(e) => updateAdditionalCostId(idx, Number(e.target.value))}
+                                  value={c.additionalCostId ?? 0}
+                                  onChange={(e) => updateAdditionalCostId(idx, e.target.value)}
                                 >
                                   {additionalCosts.map(ac => (
                                     <option key={ac.id} value={ac.id}>
