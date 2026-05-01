@@ -19,6 +19,7 @@ model Wood {
   dateUpd       DateTime @updatedAt @map("DateUpd")
   surfaceArea   Decimal  @map("SurfaceArea") @db.Decimal(10, 2)
   isDefaultWood Boolean  @default(false) @map("IsDefaultWood")
+  quoteDetails  QuoteDetail[]
 
   @@map("woods")
 }
@@ -507,17 +508,6 @@ model proyectos {
   Madera3Desc   String   @db.VarChar(500)
 }
 
-model quotecosts {
-  Id          BigInt  @id
-  IdQuote     BigInt?
-  IdCosts     BigInt?
-  Quantity    Decimal @db.Decimal(16, 2)
-  UnitPrice   Decimal @db.Decimal(16, 2)
-  Price       Decimal @db.Decimal(16, 2)
-  IsCost      Int     @default(0) @db.TinyInt
-  IsExtraPart Int     @default(0) @db.TinyInt
-}
-
 model QuoteDetail {
   id          BigInt   @id @default(autoincrement()) @map("Id")
   quoteId     BigInt?  @map("IdQuote")
@@ -528,11 +518,28 @@ model QuoteDetail {
   length      Int      @map("Length")
   width       Int      @map("Width")
   depth       Int      @map("Depth")
+  woodId      Int?     @map("IdWood")
 
   quote     Quote?    @relation(fields: [quoteId], references: [id], onDelete: Cascade)
   furniture Furniture @relation(fields: [furnitureId], references: [id])
+  wood      Wood?     @relation(fields: [woodId], references: [id])
 
   @@map("quotedetails")
+}
+
+model QuoteCost {
+  id          BigInt   @id @default(autoincrement()) @map("Id")
+  quoteId     BigInt?  @map("IdQuote")
+  costId      BigInt?  @map("IdCosts")
+  quantity    Decimal  @map("Quantity") @db.Decimal(16, 2)
+  unitPrice   Decimal  @map("UnitPrice") @db.Decimal(16, 2)
+  price       Decimal  @map("Price") @db.Decimal(16, 2)
+  isCost      Int      @default(0) @map("IsCost") @db.TinyInt
+  isExtraPart Int      @default(0) @map("IsExtraPart") @db.TinyInt
+
+  quote       Quote?   @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+
+  @@map("quotecosts")
 }
 
 model Quote {
@@ -551,6 +558,7 @@ model Quote {
   notes        String?  @map("Notes") @db.LongText
   client       Client   @relation(fields: [clientId], references: [id])
   details      QuoteDetail[]
+  costs        QuoteCost[]
 
   @@index([clientId], map: "quotes_client_id_fkey")
   @@map("quotes")

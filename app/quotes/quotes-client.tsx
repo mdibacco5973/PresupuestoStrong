@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Plus, Pencil, Trash2, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, FileText, Calendar, DollarSign, User, Armchair, Layers, Info, CheckCircle2, AlertCircle, X } from 'lucide-react'
-import { QuoteInput, QuoteDetailInput, createQuote, updateQuote, deleteQuote } from '@/app/actions/quote'
+import { QuoteInput, QuoteDetailInput, QuoteCostInput, createQuote, updateQuote, deleteQuote } from '@/app/actions/quote'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -42,6 +42,17 @@ type Quote = {
     name: string | null
   }
   details: QuoteDetail[]
+  costs: QuoteCost[]
+}
+
+type QuoteCost = {
+  id: string
+  costId: number
+  quantity: number
+  unitPrice: number
+  price: number
+  isCost: number
+  isExtraPart: number
 }
 
 type QuoteDetail = {
@@ -53,6 +64,7 @@ type QuoteDetail = {
   length: number
   width: number
   depth: number
+  woodId?: number | null
   furniture: {
     name: string
     code: string
@@ -63,6 +75,11 @@ interface QuotesClientProps {
   initialQuotes: Quote[]
   clients: any[]
   furnitures: any[]
+  woods: any[]
+  costs: any[]
+  extraParts: any[]
+  laborCosts: any[]
+  additionalCosts: any[]
 }
 
 const STATUS_OPTIONS = [
@@ -72,13 +89,22 @@ const STATUS_OPTIONS = [
   { value: 4, label: 'Finalizado', color: 'bg-blue-100 text-blue-700' },
 ]
 
-export function QuotesClient({ initialQuotes, clients, furnitures }: QuotesClientProps) {
+export function QuotesClient({ 
+  initialQuotes, 
+  clients, 
+  furnitures, 
+  woods = [],
+  costs = [],
+  extraParts = [],
+  laborCosts = [],
+  additionalCosts = [],
+}: QuotesClientProps) {
   const [quotes, setQuotes] = useState<Quote[]>(initialQuotes)
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null)
   const [isOpen, setIsOpen] = useState(false)
   const [editingQuote, setEditingQuote] = useState<Quote | null>(null)
   const [isLoading, setIsLoading] = useState(false)
-  const [activeTab, setActiveTab] = useState<'basic' | 'items'>('basic')
+  const [activeTab, setActiveTab] = useState<'basic' | 'items' | 'woods' | 'costs'>('basic')
   const [searchTerm, setSearchTerm] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 10
@@ -97,16 +123,125 @@ export function QuotesClient({ initialQuotes, clients, furnitures }: QuotesClien
     status: 1,
     notes: '',
     details: [],
+    costs: [],
   })
 
-  // Auto-calculate totals from details
+  // Auto-calculate totals from details and costs
   useEffect(() => {
     const totalDetailsPrice = formData.details.reduce((acc, d) => acc + d.price, 0)
+    const totalCostsPrice = formData.costs.reduce((acc, c) => acc + c.price, 0)
     setFormData(prev => ({
         ...prev,
-        pricePesos: totalDetailsPrice,
+        pricePesos: totalDetailsPrice + totalCostsPrice,
     }))
-  }, [formData.details])
+  }, [formData.details, formData.costs])
+
+  const defaultWood = woods?.find(w => w.isDefaultWood) || woods?.[0]
+
+  const evaluateFormula = (formula: string, context: { L: number, A: number, P: number, E: number }) => {
+    if (!formula) return 0
+    try {
+      let expression = formula.toUpperCase()
+        .replace(/L/g, context.L.toString())
+        .replace(/A/g, context.A.toString())
+        .replace(/P/g, context.P.toString())
+        .replace(/E/g, context.E.toString())
+      const result = new Function(`return ${expression}`)()
+      return Math.max(0, Math.round(result))
+    } catch (e) {
+      return 0
+    }
+  }
+
+  const woodStatsArray = useMemo(() => {
+    const statsByWood = new Map<number, any>()
+
+    formData.details.forEach(detail => {
+      const furniture = furnitures.find(f => f.id === detail.furnitureId)
+      if (!furniture || !furniture.parts) return
+
+      const wood = woods.find(w => w.id === detail.woodId) || defaultWood
+      if (!wood) return
+
+      if (!statsByWood.has(wood.id)) {
+        statsByWood.set(wood.id, {
+          woodId: wood.id,
+          woodName: wood.name || 'Sin nombre',
+          boardLength: wood.length || 2600,
+          boardWidth: wood.width || 1830,
+          piecesCount: 0,
+          piecesSurface: 0,
+          totalCutDistance: 0,
+          edges2Length: 0,
+          edges04Length: 0,
+        })
+      }
+
+      const stats = statsByWood.get(wood.id)
+
+      furniture.parts.forEach((p: any) => {
+        const partData = p.part
+        if (!partData) return
+
+        const context = {
+          L: detail.length,
+          A: detail.width,
+          P: detail.depth,
+          E: wood.thickness || 0
+        }
+
+        const l = evaluateFormula(partData.formulaLength, context)
+        const w = evaluateFormula(partData.formulaWidth, context)
+
+        if (l > 0 && w > 0) {
+          const quantity = p.quantity * detail.quantity
+          stats.piecesCount += quantity
+          stats.piecesSurface += ((l * w) / 1000000) * quantity
+          
+          stats.totalCutDistance += (((l + w) * 2) / 1000) * quantity
+
+          let pieceEdgeLength = 0
+          if (p.edges1) pieceEdgeLength += l
+          if (p.edges2) pieceEdgeLength += l
+          if (p.edges3) pieceEdgeLength += w
+          if (p.edges4) pieceEdgeLength += w
+
+          if (p.edgeSize === 2) {
+             stats.edges2Length += (pieceEdgeLength / 1000) * quantity
+          } else if (p.edgeSize === 0.4 || p.edgeSize === 0) {
+             stats.edges04Length += (pieceEdgeLength / 1000) * quantity
+          }
+        }
+      })
+    })
+
+    return Array.from(statsByWood.values()).map(stats => {
+      const boardSurface = (stats.boardLength * stats.boardWidth) / 1000000
+      const boardsCount = Math.ceil((stats.piecesSurface * 1.15) / boardSurface) || 0
+      const totalBoardsSurface = boardsCount * boardSurface
+      
+      const wasteSurface = stats.piecesSurface > 0 ? stats.piecesSurface * 0.15 : 0
+      const newRemnantsSurface = Math.max(0, totalBoardsSurface - stats.piecesSurface - wasteSurface)
+
+      return {
+        woodName: stats.woodName,
+        boardSize: `${stats.boardLength} X ${stats.boardWidth}`,
+        piecesCount: stats.piecesCount,
+        boardsCount,
+        piecesSurface: stats.piecesSurface,
+        boardSurface,
+        newRemnantsSurface,
+        totalBoardsSurface,
+        wasteSurface,
+        usedRemnantsCount: 0,
+        edges2Length: stats.edges2Length,
+        usedRemnantsSurface: 0,
+        edges04Length: stats.edges04Length,
+        totalCutDistance: stats.totalCutDistance,
+        grooveLength: 0
+      }
+    })
+  }, [formData.details, furnitures, woods, defaultWood])
 
   useEffect(() => {
     const costDollars = formData.exchangeRate > 0 ? formData.costPesos / formData.exchangeRate : 0
@@ -173,6 +308,7 @@ export function QuotesClient({ initialQuotes, clients, furnitures }: QuotesClien
       status: 1,
       notes: '',
       details: [],
+      costs: [],
     })
     setEditingQuote(null)
     setActiveTab('basic')
@@ -207,7 +343,17 @@ export function QuotesClient({ initialQuotes, clients, furnitures }: QuotesClien
         length: d.length,
         width: d.width,
         depth: d.depth,
+        woodId: d.woodId
       })),
+      costs: (quote.costs || []).map(c => ({
+        id: c.id,
+        costId: c.costId,
+        quantity: c.quantity,
+        unitPrice: c.unitPrice,
+        price: c.price,
+        isCost: c.isCost,
+        isExtraPart: c.isExtraPart
+      }))
     })
     setIsOpen(true)
   }
@@ -251,19 +397,26 @@ export function QuotesClient({ initialQuotes, clients, furnitures }: QuotesClien
   }
 
   const addDetail = () => {
-    const firstFurniture = furnitures[0]
+    // Buscar el primer mueble que no sea idéntico a uno ya agregado en sus medidas por defecto
+    const availableFurnitures = furnitures.filter(f => 
+      !formData.details.some(d => d.furnitureId === f.id && d.length === f.length && d.width === f.width && d.depth === f.depth)
+    )
+    
+    const furnitureToAdd = availableFurnitures.length > 0 ? availableFurnitures[0] : furnitures[0]
+    
     setFormData({
       ...formData,
       details: [
         ...formData.details,
         {
-          furnitureId: firstFurniture?.id || 0,
+          furnitureId: furnitureToAdd.id,
           quantity: 1,
-          unitPrice: firstFurniture?.furnitureTotal || 0,
-          price: firstFurniture?.furnitureTotal || 0,
-          length: firstFurniture?.length || 0,
-          width: firstFurniture?.width || 0,
-          depth: firstFurniture?.depth || 0,
+          unitPrice: furnitureToAdd.furnitureTotal || 0,
+          price: furnitureToAdd.furnitureTotal || 0,
+          length: furnitureToAdd.length || 0,
+          width: furnitureToAdd.width || 0,
+          depth: furnitureToAdd.depth || 0,
+          woodId: defaultWood?.id || null,
         }
       ]
     })
@@ -299,6 +452,58 @@ export function QuotesClient({ initialQuotes, clients, furnitures }: QuotesClien
 
     newDetails[index] = detail
     setFormData({ ...formData, details: newDetails })
+  }
+
+  const addCost = () => {
+    setFormData({
+      ...formData,
+      costs: [
+        ...formData.costs,
+        {
+          costId: costs[0]?.id || 0,
+          quantity: 1,
+          unitPrice: costs[0]?.price || 0,
+          price: costs[0]?.price || 0,
+          isCost: 1,
+          isExtraPart: 0,
+        }
+      ]
+    })
+  }
+
+  const removeCost = (index: number) => {
+    setFormData({
+      ...formData,
+      costs: formData.costs.filter((_, i) => i !== index)
+    })
+  }
+
+  const updateCost = (index: number, updates: Partial<QuoteCostInput>) => {
+    const newCosts = [...formData.costs]
+    const cost = { ...newCosts[index], ...updates }
+    
+    if ('unitPrice' in updates || 'quantity' in updates) {
+      cost.price = cost.unitPrice * cost.quantity
+    }
+    
+    if ('costId' in updates || 'isCost' in updates || 'isExtraPart' in updates) {
+      let selectedItem: any = null
+      if (cost.isExtraPart) {
+        selectedItem = extraParts.find(e => e.id === cost.costId)
+      } else if (cost.isCost) {
+        selectedItem = costs.find(c => c.id === cost.costId)
+        if (!selectedItem) selectedItem = laborCosts.find(c => c.id === cost.costId)
+        if (!selectedItem) selectedItem = additionalCosts.find(c => c.id === cost.costId)
+      }
+
+      if (selectedItem) {
+        cost.unitPrice = selectedItem.price || selectedItem.Valor || 0
+        cost.price = cost.unitPrice * cost.quantity
+      }
+    }
+
+    newCosts[index] = cost
+    setFormData({ ...formData, costs: newCosts })
   }
 
   const formatCurrency = (amount: number) => {
@@ -357,6 +562,20 @@ export function QuotesClient({ initialQuotes, clients, furnitures }: QuotesClien
                 onClick={() => setActiveTab('items')}
               >
                 Muebles / Detalles ({formData.details.length})
+              </button>
+              <button 
+                type="button"
+                className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${activeTab === 'woods' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+                onClick={() => setActiveTab('woods')}
+              >
+                Maderas
+              </button>
+              <button 
+                type="button"
+                className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${activeTab === 'costs' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+                onClick={() => setActiveTab('costs')}
+              >
+                Costos y Extras
               </button>
             </div>
 
@@ -473,6 +692,7 @@ export function QuotesClient({ initialQuotes, clients, furnitures }: QuotesClien
                       <TableHeader className="bg-muted/50 text-[10px] uppercase font-bold">
                         <TableRow>
                           <TableHead>Mueble</TableHead>
+                          <TableHead className="w-24">Madera</TableHead>
                           <TableHead className="w-20">Cant.</TableHead>
                           <TableHead>Medidas (mm)</TableHead>
                           <TableHead>Precio Unit.</TableHead>
@@ -489,7 +709,35 @@ export function QuotesClient({ initialQuotes, clients, furnitures }: QuotesClien
                                 value={detail.furnitureId} 
                                 onChange={e => updateDetail(idx, { furnitureId: parseInt(e.target.value) })}
                               >
-                                {furnitures.map(f => <option key={f.id} value={f.id}>[{f.code}] {f.name}</option>)}
+                                {furnitures.map(f => {
+                                  // Solo se deshabilita si YA existe otra fila con el mismo mueble Y las mismas medidas exactas que el mueble por defecto.
+                                  // Esto permite agregar el mismo mueble si la fila actual ya tiene medidas distintas, o si va a cambiar las medidas después.
+                                  const isSelected = formData.details.some((d2, i2) => 
+                                    i2 !== idx && 
+                                    d2.furnitureId === f.id && 
+                                    d2.length === f.length && 
+                                    d2.width === f.width && 
+                                    d2.depth === f.depth
+                                  )
+                                  return (
+                                    <option key={f.id} value={f.id} disabled={isSelected}>
+                                      [{f.code}] {f.name}
+                                    </option>
+                                  )
+                                })}
+                              </select>
+                            </TableCell>
+                            <TableCell>
+                              <select 
+                                className="w-full bg-transparent border-none focus:ring-0 text-xs font-medium"
+                                value={detail.woodId || defaultWood?.id || ''} 
+                                onChange={e => updateDetail(idx, { woodId: parseInt(e.target.value) || null })}
+                              >
+                                {woods.map(w => (
+                                  <option key={w.id} value={w.id}>
+                                    {w.name}
+                                  </option>
+                                ))}
                               </select>
                             </TableCell>
                             <TableCell>
@@ -519,8 +767,165 @@ export function QuotesClient({ initialQuotes, clients, furnitures }: QuotesClien
                         ))}
                         {formData.details.length === 0 && (
                           <TableRow>
-                            <TableCell colSpan={6} className="text-center py-8 text-muted-foreground text-sm italic">
+                            <TableCell colSpan={7} className="text-center py-8 text-muted-foreground text-sm italic">
                               No hay muebles agregados a este presupuesto.
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'woods' && (
+                <div className="space-y-6">
+                  <div className="flex justify-between items-center">
+                    <h3 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground">Resumen de Maderas</h3>
+                  </div>
+                  {woodStatsArray.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground text-sm italic border rounded-md">
+                      No hay muebles configurados o seleccionados aún.
+                    </div>
+                  ) : (
+                    woodStatsArray.map((stats, index) => (
+                      <div key={index} className="border rounded-md overflow-hidden text-sm shadow-sm">
+                        <div className="grid grid-cols-4 divide-x divide-y border-b">
+                          {/* Fila 0 */}
+                          <div className="p-2 font-medium bg-primary/10">Madera Usada:</div>
+                          <div className="p-2 text-left col-span-3 font-bold text-primary bg-primary/5">{stats.woodName}</div>
+
+                          {/* Fila 1 */}
+                          <div className="p-2 font-medium bg-muted/10">Tamaño del tablero</div>
+                          <div className="p-2 text-right">{stats.boardSize}</div>
+                          <div className="p-2 font-medium bg-muted/10">Cantidad de Piezas:</div>
+                          <div className="p-2 text-right">{stats.piecesCount}</div>
+
+                          {/* Fila 2 */}
+                          <div className="p-2 font-medium bg-muted/10">Cantidad de tableros:</div>
+                          <div className="p-2 text-right font-bold">{stats.boardsCount}</div>
+                          <div className="p-2 font-medium bg-muted/10">Superficie de las piezas:</div>
+                          <div className="p-2 text-right">{stats.piecesSurface.toFixed(3)} sq.m.</div>
+
+                          {/* Fila 3 */}
+                          <div className="p-2 font-medium bg-muted/10">Superficie del Tablero:</div>
+                          <div className="p-2 text-right">{stats.boardSurface.toFixed(3)} sq.m.</div>
+                          <div className="p-2 font-medium bg-muted/10">Superficie de nuevos remanentes:</div>
+                          <div className="p-2 text-right">{stats.newRemnantsSurface.toFixed(3)} sq.m.</div>
+
+                          {/* Fila 4 */}
+                          <div className="p-2 font-medium bg-muted/10">Superficie tableros:</div>
+                          <div className="p-2 text-right">{stats.totalBoardsSurface.toFixed(3)} sq.m.</div>
+                          <div className="p-2 font-medium bg-muted/10">Superficie de desperdicio:</div>
+                          <div className="p-2 text-right">{stats.wasteSurface.toFixed(3)} sq.m.</div>
+
+                          {/* Fila 5 */}
+                          <div className="p-2 font-medium bg-muted/10">Cantidad de remanentes usados:</div>
+                          <div className="p-2 text-right">{stats.usedRemnantsCount}</div>
+                          <div className="p-2 font-medium bg-muted/10">Largo de bordes - 2:</div>
+                          <div className="p-2 text-right">{stats.edges2Length.toFixed(1)} m.</div>
+
+                          {/* Fila 6 */}
+                          <div className="p-2 font-medium bg-muted/10">Superficie de remanentes usados:</div>
+                          <div className="p-2 text-right">{stats.usedRemnantsSurface} sq.m.</div>
+                          <div className="p-2 font-medium bg-muted/10">Largo de bordes - 0.4:</div>
+                          <div className="p-2 text-right">{stats.edges04Length.toFixed(1)} m.</div>
+
+                          {/* Fila 7 */}
+                          <div className="p-2 font-medium bg-muted/10">Distancia total cortada:</div>
+                          <div className="p-2 text-right">{stats.totalCutDistance.toFixed(1)} m.</div>
+                          <div className="p-2 font-medium bg-muted/10">Largo de surcos:</div>
+                          <div className="p-2 text-right">{stats.grooveLength} m.</div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+
+              {activeTab === 'costs' && (
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <h3 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground">Costos y Extras</h3>
+                    <Button type="button" onClick={addCost} variant="outline" size="sm">
+                      <Plus className="h-4 w-4 mr-2" /> Agregar Costo
+                    </Button>
+                  </div>
+                  <div className="border rounded-md overflow-hidden">
+                    <Table>
+                      <TableHeader className="bg-muted/50 text-[10px] uppercase font-bold">
+                        <TableRow>
+                          <TableHead className="w-32">Tipo</TableHead>
+                          <TableHead>Concepto</TableHead>
+                          <TableHead className="w-20">Cant.</TableHead>
+                          <TableHead>Precio Unit.</TableHead>
+                          <TableHead>Subtotal</TableHead>
+                          <TableHead className="w-10"></TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {formData.costs.map((cost, idx) => (
+                          <TableRow key={idx}>
+                            <TableCell>
+                              <select 
+                                className="w-full bg-transparent border-none focus:ring-0 text-xs font-medium"
+                                value={cost.isExtraPart ? 'extraPart' : 'cost'}
+                                onChange={e => {
+                                  const val = e.target.value
+                                  if (val === 'extraPart') {
+                                    updateCost(idx, { isExtraPart: 1, isCost: 0, costId: extraParts[0]?.id || 0 })
+                                  } else {
+                                    updateCost(idx, { isExtraPart: 0, isCost: 1, costId: costs[0]?.id || 0 })
+                                  }
+                                }}
+                              >
+                                <option value="cost">Costo / Terminación</option>
+                                <option value="extraPart">Pieza Extra</option>
+                              </select>
+                            </TableCell>
+                            <TableCell>
+                              <select 
+                                className="w-full bg-transparent border-none focus:ring-0 text-xs"
+                                value={cost.costId || ''} 
+                                onChange={e => updateCost(idx, { costId: parseInt(e.target.value) || 0 })}
+                              >
+                                {cost.isExtraPart ? (
+                                  extraParts.map(e => <option key={e.id} value={e.id}>{e.name}</option>)
+                                ) : (
+                                  <>
+                                    <optgroup label="Terminaciones / Costos">
+                                      {costs.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                    </optgroup>
+                                    <optgroup label="Mano de Obra">
+                                      {laborCosts.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                    </optgroup>
+                                    <optgroup label="Costos Adicionales">
+                                      {additionalCosts.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                    </optgroup>
+                                  </>
+                                )}
+                              </select>
+                            </TableCell>
+                            <TableCell>
+                              <Input type="number" className="h-8 text-center" value={cost.quantity} onChange={e => updateCost(idx, { quantity: parseFloat(e.target.value) || 1 })} />
+                            </TableCell>
+                            <TableCell>
+                              <Input type="number" step="0.01" className="h-8 w-24" value={cost.unitPrice} onChange={e => updateCost(idx, { unitPrice: parseFloat(e.target.value) || 0 })} />
+                            </TableCell>
+                            <TableCell className="text-xs font-bold text-primary whitespace-nowrap">
+                              {formatCurrency(cost.price)}
+                            </TableCell>
+                            <TableCell>
+                              <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => removeCost(idx)}>
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                        {formData.costs.length === 0 && (
+                          <TableRow>
+                            <TableCell colSpan={6} className="text-center py-8 text-muted-foreground text-sm italic">
+                              No hay costos agregados.
                             </TableCell>
                           </TableRow>
                         )}

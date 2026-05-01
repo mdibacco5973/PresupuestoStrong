@@ -12,6 +12,17 @@ export type QuoteDetailInput = {
   length: number
   width: number
   depth: number
+  woodId?: number | null
+}
+
+export type QuoteCostInput = {
+  id?: string
+  costId: number
+  quantity: number
+  unitPrice: number
+  price: number
+  isCost: number
+  isExtraPart: number
 }
 
 export type QuoteInput = {
@@ -28,6 +39,7 @@ export type QuoteInput = {
   status: number
   notes?: string | null
   details: QuoteDetailInput[]
+  costs: QuoteCostInput[]
 }
 
 // Helper to serialize BigInt and Decimal
@@ -46,6 +58,16 @@ function serializeQuote(quote: any) {
       quoteId: detail.quoteId?.toString() || null,
       unitPrice: Number(detail.unitPrice),
       price: Number(detail.price),
+      woodId: detail.woodId,
+    })),
+    costs: (quote.costs || []).map((cost: any) => ({
+      ...cost,
+      id: cost.id.toString(),
+      quoteId: cost.quoteId?.toString() || null,
+      costId: cost.costId ? Number(cost.costId) : null,
+      quantity: Number(cost.quantity),
+      unitPrice: Number(cost.unitPrice),
+      price: Number(cost.price),
     }))
   }
 }
@@ -100,11 +122,23 @@ export async function createQuote(data: QuoteInput) {
           length: detail.length,
           width: detail.width,
           depth: detail.depth,
+          woodId: detail.woodId,
+        }))
+      },
+      costs: {
+        create: (data.costs || []).map(cost => ({
+          costId: cost.costId,
+          quantity: cost.quantity,
+          unitPrice: cost.unitPrice,
+          price: cost.price,
+          isCost: cost.isCost,
+          isExtraPart: cost.isExtraPart,
         }))
       }
     },
     include: {
-        details: true
+        details: true,
+        costs: true
     }
   })
   revalidatePath('/quotes')
@@ -117,6 +151,7 @@ export async function updateQuote(id: string, data: QuoteInput) {
   const updated = await prisma.$transaction(async (tx) => {
     // Delete existing details
     await tx.quoteDetail.deleteMany({ where: { quoteId: quoteId } })
+    await tx.quoteCost.deleteMany({ where: { quoteId: quoteId } })
 
     // Update quote and create new details
     return await tx.quote.update({
@@ -143,11 +178,23 @@ export async function updateQuote(id: string, data: QuoteInput) {
             length: detail.length,
             width: detail.width,
             depth: detail.depth,
+            woodId: detail.woodId,
+          }))
+        },
+        costs: {
+          create: (data.costs || []).map(cost => ({
+            costId: cost.costId,
+            quantity: cost.quantity,
+            unitPrice: cost.unitPrice,
+            price: cost.price,
+            isCost: cost.isCost,
+            isExtraPart: cost.isExtraPart,
           }))
         }
       },
       include: {
-        details: true
+        details: true,
+        costs: true
       }
     })
   })
