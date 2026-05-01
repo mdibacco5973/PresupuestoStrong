@@ -728,7 +728,7 @@ export function FurnitureClient({ initialItems, parts, extraParts, costs, laborC
                               </div>
                             </TableCell>
                             <TableCell>
-                              <Input type="number" className="h-8" value={p.edgeSize} onChange={e => updatePartConfig(idx, 'edgeSize', parseInt(e.target.value) || 0)} />
+                              <Input type="number" className="h-8" value={p.edgeSize ?? 0} onChange={e => updatePartConfig(idx, 'edgeSize', parseInt(e.target.value) || 0)} />
                             </TableCell>
                             <TableCell>
                               <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => removePartConfig(idx)}>

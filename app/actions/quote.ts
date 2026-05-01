@@ -187,7 +187,7 @@ export async function getQuoteById(id: string) {
 export async function createQuote(data: QuoteInput) {
   const quote = await prisma.quote.create({
     data: {
-      clientId: data.clientId,
+      client: { connect: { id: data.clientId } },
       code: data.code,
       date: data.date,
       dateDelivery: data.dateDelivery,
@@ -202,7 +202,7 @@ export async function createQuote(data: QuoteInput) {
       notes: data.notes,
       details: {
         create: data.details.map(detail => ({
-          furnitureId: BigInt(detail.furnitureId),
+          furniture: { connect: { id: BigInt(detail.furnitureId) } },
           quantity: detail.quantity,
           unitPrice: detail.unitPrice,
           price: detail.price,
@@ -213,13 +213,13 @@ export async function createQuote(data: QuoteInput) {
       },
       additionalCosts: {
         create: (data.additionalCosts || []).map(c => ({
-          additionalCostId: c.additionalCostId ? BigInt(c.additionalCostId) : null,
-          furnitureId: BigInt(c.furnitureId),
+          additionalCost: c.additionalCostId ? { connect: { id: BigInt(c.additionalCostId) } } : undefined,
+          furniture: { connect: { id: BigInt(c.furnitureId) } },
         }))
       },
       woods: {
         create: (data.woods || []).map(w => ({
-          woodId: BigInt(w.woodId),
+          wood: { connect: { id: BigInt(w.woodId) } },
           quantity: w.quantity,
           surfaceWood: w.surfaceWood,
           surfaceTotalWood: w.surfaceTotalWood,
@@ -232,15 +232,15 @@ export async function createQuote(data: QuoteInput) {
       },
       parts: {
         create: (data.parts || []).map(part => ({
-          partId: part.partId ? BigInt(part.partId) : null,
-          furnitureId: BigInt(part.furnitureId),
-          woodId: BigInt(part.woodId),
+          part: part.partId ? { connect: { id: BigInt(part.partId) } } : undefined,
+          furniture: { connect: { id: BigInt(part.furnitureId) } },
+          wood: { connect: { id: BigInt(part.woodId) } },
         }))
       },
       hardware: {
         create: (data.hardware || []).map(hw => ({
-          hardwareId: hw.hardwareId ? BigInt(hw.hardwareId) : null,
-          furnitureId: BigInt(hw.furnitureId),
+          hardware: hw.hardwareId ? { connect: { id: BigInt(hw.hardwareId) } } : undefined,
+          furniture: { connect: { id: BigInt(hw.furnitureId) } },
           code: hw.code,
           quantity: hw.quantity,
           unitMeasure: hw.unitMeasure,
@@ -249,14 +249,14 @@ export async function createQuote(data: QuoteInput) {
       },
       finishes: {
         create: (data.finishes || []).map(f => ({
-          finishId: f.finishId ? BigInt(f.finishId) : null,
-          furnitureId: BigInt(f.furnitureId),
+          finish: f.finishId ? { connect: { id: BigInt(f.finishId) } } : undefined,
+          furniture: { connect: { id: BigInt(f.furnitureId) } },
         }))
       },
       labor: {
         create: (data.labor || []).map(l => ({
-          laborId: l.laborId ? BigInt(l.laborId) : null,
-          furnitureId: BigInt(l.furnitureId),
+          labor: l.laborId ? { connect: { id: BigInt(l.laborId) } } : undefined,
+          furniture: { connect: { id: BigInt(l.furnitureId) } },
         }))
       }
     },
@@ -291,7 +291,7 @@ export async function updateQuote(id: string, data: QuoteInput) {
     return await tx.quote.update({
       where: { id: quoteId },
       data: {
-        clientId: data.clientId,
+        client: { connect: { id: data.clientId } },
         code: data.code,
         date: data.date,
         dateDelivery: data.dateDelivery,
@@ -306,7 +306,7 @@ export async function updateQuote(id: string, data: QuoteInput) {
         notes: data.notes,
         details: {
           create: data.details.map(detail => ({
-            furnitureId: BigInt(detail.furnitureId),
+            furniture: { connect: { id: BigInt(detail.furnitureId) } },
             quantity: detail.quantity,
             unitPrice: detail.unitPrice,
             price: detail.price,
@@ -317,13 +317,13 @@ export async function updateQuote(id: string, data: QuoteInput) {
         },
         additionalCosts: {
           create: (data.additionalCosts || []).map(c => ({
-            additionalCostId: c.additionalCostId ? BigInt(c.additionalCostId) : null,
-            furnitureId: BigInt(c.furnitureId),
+            additionalCost: c.additionalCostId ? { connect: { id: BigInt(c.additionalCostId) } } : undefined,
+            furniture: { connect: { id: BigInt(c.furnitureId) } },
           }))
         },
         woods: {
           create: (data.woods || []).map(w => ({
-            woodId: BigInt(w.woodId),
+            wood: { connect: { id: BigInt(w.woodId) } },
             quantity: w.quantity,
             surfaceWood: w.surfaceWood,
             surfaceTotalWood: w.surfaceTotalWood,
@@ -336,15 +336,15 @@ export async function updateQuote(id: string, data: QuoteInput) {
         },
         parts: {
           create: (data.parts || []).map(part => ({
-            partId: part.partId ? BigInt(part.partId) : null,
-            furnitureId: BigInt(part.furnitureId),
-            woodId: BigInt(part.woodId),
+            part: part.partId ? { connect: { id: BigInt(part.partId) } } : undefined,
+            furniture: { connect: { id: BigInt(part.furnitureId) } },
+            wood: { connect: { id: BigInt(part.woodId) } },
           }))
         },
         hardware: {
           create: (data.hardware || []).map(hw => ({
-            hardwareId: hw.hardwareId ? BigInt(hw.hardwareId) : null,
-            furnitureId: BigInt(hw.furnitureId),
+            hardware: hw.hardwareId ? { connect: { id: BigInt(hw.hardwareId) } } : undefined,
+            furniture: { connect: { id: BigInt(hw.furnitureId) } },
             code: hw.code,
             quantity: hw.quantity,
             unitMeasure: hw.unitMeasure,
@@ -353,14 +353,14 @@ export async function updateQuote(id: string, data: QuoteInput) {
         },
         finishes: {
           create: (data.finishes || []).map(f => ({
-            finishId: f.finishId ? BigInt(f.finishId) : null,
-            furnitureId: BigInt(f.furnitureId),
+            finish: f.finishId ? { connect: { id: BigInt(f.finishId) } } : undefined,
+            furniture: { connect: { id: BigInt(f.furnitureId) } },
           }))
         },
         labor: {
           create: (data.labor || []).map(l => ({
-            laborId: l.laborId ? BigInt(l.laborId) : null,
-            furnitureId: BigInt(l.furnitureId),
+            labor: l.laborId ? { connect: { id: BigInt(l.laborId) } } : undefined,
+            furniture: { connect: { id: BigInt(l.furnitureId) } },
           }))
         }
       },
