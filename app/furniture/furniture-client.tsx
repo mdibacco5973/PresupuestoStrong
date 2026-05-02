@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Plus, Pencil, Trash2, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, Package, Layers, DollarSign, Image as ImageIcon, X } from 'lucide-react'
+import { Plus, Pencil, Trash2, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, Package, Layers, DollarSign, Image as ImageIcon, X, Copy } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -21,7 +21,7 @@ import {
   DialogTrigger,
   DialogFooter,
 } from '@/components/ui/dialog'
-import { createFurniture, updateFurniture, deleteFurniture, FurnitureInput, FurnitureConfigInput, FurnitureExtraConfigInput, FurnitureCostConfigInput, FurnitureLaborCostConfigInput, FurnitureAdditionalCostConfigInput } from '@/app/actions/furniture'
+import { createFurniture, updateFurniture, deleteFurniture, duplicateFurniture, FurnitureInput, FurnitureConfigInput, FurnitureExtraConfigInput, FurnitureCostConfigInput, FurnitureLaborCostConfigInput, FurnitureAdditionalCostConfigInput } from '@/app/actions/furniture'
 import Image from 'next/image'
 
 interface FurnitureClientProps {
@@ -142,14 +142,34 @@ export function FurnitureClient({ initialItems, parts, extraParts, costs, laborC
     setIsOpen(true)
   }
 
-  const handleDelete = async (id: number | string) => {
+  const handleDelete = async (id: string) => {
     if (!confirm('¿Estás seguro de que deseas eliminar este mueble?')) return
+    setIsPending(true)
     try {
       await deleteFurniture(id)
-      setItems(items.filter(i => i.id !== id))
+      setItems(items.filter(item => item.id !== id))
     } catch (error) {
       console.error(error)
       alert('Error al eliminar el mueble')
+    } finally {
+      setIsPending(false)
+    }
+  }
+
+  const handleDuplicate = async (id: string) => {
+    if (!confirm('¿Deseas duplicar este mueble?')) return
+    setIsPending(true)
+    try {
+      const duplicated = await duplicateFurniture(id)
+      if (duplicated) {
+        setItems([duplicated, ...items])
+        alert('Mueble duplicado correctamente')
+      }
+    } catch (error) {
+      console.error(error)
+      alert('Error al duplicar el mueble')
+    } finally {
+      setIsPending(false)
     }
   }
 
@@ -278,9 +298,39 @@ export function FurnitureClient({ initialItems, parts, extraParts, costs, laborC
       return acc + (cost ? Number(cost.price) * c.quantity : 0)
     }, 0)
 
+    // Calcular longitud de filos (mm)
+    let totalEdgeLength = 0
+    let totalPiecesCount = 0
+    formData.parts.forEach(p => {
+      totalPiecesCount += p.quantity
+      const partData = parts.find(part => part.id === p.idPart)
+      if (!partData) return
+      const context = { L: formData.length, A: formData.width, P: formData.depth, E: defaultWood?.thickness || 0 }
+      const l = evaluateFormula(partData.formulaLength, context)
+      const w = evaluateFormula(partData.formulaWidth, context)
+      
+      let partEdges = 0
+      if (p.edges1) partEdges += l
+      if (p.edges2) partEdges += l
+      if (p.edges3) partEdges += w
+      if (p.edges4) partEdges += w
+      
+      // Convertir mm a metros para el cálculo de mano de obra
+      totalEdgeLength += ((partEdges / 1000) * p.quantity)
+    })
+
     const totalLabor = formData.laborCosts.reduce((acc, l) => {
       const labor = laborCosts.find(item => item.id === l.idLaborCost)
-      return acc + (labor ? Number(labor.price) * l.quantity : 0)
+      if (!labor) return acc
+      
+      let qty = l.quantity
+      if (labor.name.toUpperCase().includes('FILO') || labor.name.toUpperCase().includes('PEGADO')) {
+        qty = totalEdgeLength
+      } else if (labor.name.toUpperCase().includes('CORTE')) {
+        qty = totalPiecesCount
+      }
+      
+      return acc + (Number(labor.price) * qty)
     }, 0)
 
     const totalAdditional = formData.additionalCosts.reduce((acc, a) => {
@@ -291,16 +341,35 @@ export function FurnitureClient({ initialItems, parts, extraParts, costs, laborC
     const totalEverything = totalFurniturePrice + totalHardware + totalCosts + totalLabor + totalAdditional
 
     setFormData(prev => {
+      // Actualizar cantidades de mano de obra automáticas
+      const updatedLaborCosts = prev.laborCosts.map(l => {
+        const labor = laborCosts.find(item => item.id === l.idLaborCost)
+        if (labor) {
+          const laborName = labor.name.toUpperCase()
+          if (laborName.includes('FILO') || laborName.includes('PEGADO')) {
+            const roundedQty = Number(totalEdgeLength.toFixed(2))
+            if (l.quantity !== roundedQty) return { ...l, quantity: roundedQty }
+          } else if (laborName.includes('CORTE')) {
+            if (l.quantity !== totalPiecesCount) return { ...l, quantity: totalPiecesCount }
+          }
+        }
+        return l
+      })
+
+      const laborCostsChanged = JSON.stringify(updatedLaborCosts) !== JSON.stringify(prev.laborCosts)
+
       if (Math.abs(totalFurniturePrice - prev.furniturePrice) < 0.01 && 
           Math.abs(totalHardware - prev.hardwarePrice) < 0.01 && 
           Math.abs(totalCosts - prev.costPrice) < 0.01 && 
           Math.abs(totalLabor - prev.laborPrice) < 0.01 && 
           Math.abs(totalAdditional - prev.additionalPrice) < 0.01 && 
-          Math.abs(totalEverything - prev.furnitureTotal) < 0.01) {
+          Math.abs(totalEverything - prev.furnitureTotal) < 0.01 &&
+          !laborCostsChanged) {
         return prev
       }
       return {
         ...prev,
+        laborCosts: updatedLaborCosts,
         furniturePrice: Number(totalFurniturePrice.toFixed(2)),
         hardwarePrice: Number(totalHardware.toFixed(2)),
         costPrice: Number(totalCosts.toFixed(2)),
@@ -661,7 +730,7 @@ export function FurnitureClient({ initialItems, parts, extraParts, costs, laborC
                               </select>
                             </TableCell>
                             <TableCell>
-                              <Input type="number" className="h-8" value={p.quantity} onChange={e => updatePartConfig(idx, 'quantity', parseInt(e.target.value) || 1)} />
+                              <Input type="number" className="h-8" value={p.quantity} onChange={e => updatePartConfig(idx, 'quantity', parseFloat(e.target.value) || 1)} step="0.01" />
                             </TableCell>
                             <TableCell className="text-xs font-mono whitespace-nowrap">
                               {(() => {
@@ -785,7 +854,7 @@ export function FurnitureClient({ initialItems, parts, extraParts, costs, laborC
                               </select>
                             </TableCell>
                             <TableCell>
-                              <Input type="number" className="h-8" value={ep.quantity} onChange={e => updateExtraConfig(idx, 'quantity', parseInt(e.target.value) || 1)} />
+                              <Input type="number" className="h-8" value={ep.quantity} onChange={e => updateExtraConfig(idx, 'quantity', parseFloat(e.target.value) || 1)} step="0.01" />
                             </TableCell>
                             <TableCell className="text-xs font-medium text-primary">
                               {(() => {
@@ -854,7 +923,7 @@ export function FurnitureClient({ initialItems, parts, extraParts, costs, laborC
                               </select>
                             </TableCell>
                             <TableCell>
-                              <Input type="number" className="h-8" value={c.quantity} onChange={e => updateCostConfig(idx, 'quantity', parseInt(e.target.value) || 1)} />
+                              <Input type="number" className="h-8" value={c.quantity} onChange={e => updateCostConfig(idx, 'quantity', parseFloat(e.target.value) || 1)} step="0.01" />
                             </TableCell>
                             <TableCell className="text-xs font-medium text-primary">
                               {(() => {
@@ -923,7 +992,18 @@ export function FurnitureClient({ initialItems, parts, extraParts, costs, laborC
                               </select>
                             </TableCell>
                             <TableCell>
-                              <Input type="number" className="h-8" value={l.quantity} onChange={e => updateLaborCostConfig(idx, 'quantity', parseInt(e.target.value) || 1)} />
+                              <Input 
+                                type="number" 
+                                className="h-8" 
+                                value={l.quantity} 
+                                onChange={e => updateLaborCostConfig(idx, 'quantity', parseFloat(e.target.value) || 1)} step="0.01" 
+                                disabled={(() => {
+                                  const item = laborCosts.find(i => i.id === l.idLaborCost)
+                                  if (!item) return false
+                                  const name = item.name.toUpperCase()
+                                  return name.includes('FILO') || name.includes('PEGADO') || name.includes('CORTE')
+                                })()}
+                              />
                             </TableCell>
                             <TableCell className="text-xs font-medium text-primary">
                               {(() => {
@@ -992,7 +1072,7 @@ export function FurnitureClient({ initialItems, parts, extraParts, costs, laborC
                               </select>
                             </TableCell>
                             <TableCell>
-                              <Input type="number" className="h-8" value={a.quantity} onChange={e => updateAdditionalCostConfig(idx, 'quantity', parseInt(e.target.value) || 1)} />
+                              <Input type="number" className="h-8" value={a.quantity} onChange={e => updateAdditionalCostConfig(idx, 'quantity', parseFloat(e.target.value) || 1)} step="0.01" />
                             </TableCell>
                             <TableCell className="text-xs font-medium text-primary">
                               {(() => {
@@ -1160,6 +1240,15 @@ export function FurnitureClient({ initialItems, parts, extraParts, costs, laborC
                         className="h-8 w-8 text-muted-foreground hover:text-primary"
                       >
                         <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleDuplicate(item.id)}
+                        className="h-8 w-8 text-muted-foreground hover:text-blue-600"
+                        title="Duplicar"
+                      >
+                        <Copy className="h-4 w-4" />
                       </Button>
                       <Button
                         variant="ghost"

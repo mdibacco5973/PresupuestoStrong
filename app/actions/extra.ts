@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache'
 export type AdditionalCostInput = {
   name: string
   price: number
+  formula: string | null
 }
 
 export async function getAdditionalCosts() {

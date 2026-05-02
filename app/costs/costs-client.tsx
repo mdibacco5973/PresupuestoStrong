@@ -27,6 +27,7 @@ type CostUI = {
   id: string | number
   name: string
   price: number
+  formula: string | null
   dateUpd: Date
 }
 
@@ -47,6 +48,7 @@ export function CostsClient({ initialItems }: CostsClientProps) {
   const [formData, setFormData] = useState<CostInput>({
     name: '',
     price: 0,
+    formula: '',
   })
 
   const handleOpenChange = (open: boolean) => {
@@ -61,6 +63,7 @@ export function CostsClient({ initialItems }: CostsClientProps) {
     setFormData({
       name: '',
       price: 0,
+      formula: '',
     })
   }
 
@@ -69,6 +72,7 @@ export function CostsClient({ initialItems }: CostsClientProps) {
     setFormData({
       name: item.name,
       price: item.price,
+      formula: item.formula || '',
     })
     setIsOpen(true)
   }
@@ -141,6 +145,7 @@ export function CostsClient({ initialItems }: CostsClientProps) {
     const searchLower = searchTerm.toLowerCase()
     return (
       item.name.toLowerCase().includes(searchLower) ||
+      (item.formula?.toLowerCase() || '').includes(searchLower) ||
       item.price.toString().includes(searchLower)
     )
   })
@@ -226,6 +231,16 @@ export function CostsClient({ initialItems }: CostsClientProps) {
                   required
                 />
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="formula">Fórmula</Label>
+                <Input
+                  id="formula"
+                  placeholder="Ej: S * V"
+                  value={formData.formula || ''}
+                  onChange={e => setFormData({ ...formData, formula: e.target.value })}
+                />
+                <p className="text-[10px] text-muted-foreground">S = Superficie en m2, V = Valor del acabado</p>
+              </div>
               
               <DialogFooter>
                 <Button type="submit" disabled={isPending}>
@@ -247,6 +262,7 @@ export function CostsClient({ initialItems }: CostsClientProps) {
               <TableHead className="cursor-pointer hover:text-primary transition-colors font-bold text-right w-32" onClick={() => requestSort('price')}>
                 <div className="flex items-center justify-end">Precio <SortIcon columnKey="price" /></div>
               </TableHead>
+              <TableHead className="font-bold">Fórmula</TableHead>
               <TableHead className="cursor-pointer hover:text-primary transition-colors font-bold w-32" onClick={() => requestSort('dateUpd')}>
                 <div className="flex items-center">ÚIt. Actualiz. <SortIcon columnKey="dateUpd" /></div>
               </TableHead>
@@ -268,6 +284,7 @@ export function CostsClient({ initialItems }: CostsClientProps) {
                   <TableRow key={item.id} className="hover:bg-muted/50 transition-colors text-xs">
                     <TableCell className="font-medium py-2">{item.name}</TableCell>
                     <TableCell className="text-right font-semibold text-primary py-2 whitespace-nowrap">$ {item.price.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</TableCell>
+                    <TableCell className="py-2">{item.formula || '-'}</TableCell>
                     <TableCell className="py-2">{new Date(item.dateUpd).toLocaleDateString('es-AR')}</TableCell>
                     <TableCell className="py-2">
                       <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold ${reminder.color}`}>

@@ -114,6 +114,7 @@ model Cost {
   name    String   @map("Name") @db.VarChar(200)
   dateUpd DateTime @updatedAt @map("DateUpd")
   price   Decimal  @map("Price") @db.Decimal(16, 2)
+  formula String?  @map("Formula") @db.VarChar(200)
   
   furnitureCosts FurnitureCostConfig[]
   quoteFinishes  QuoteFinish[]
@@ -536,11 +537,13 @@ model QuoteAdditionalCost {
   id               BigInt   @id @default(autoincrement()) @map("Id")
   quoteId          BigInt?  @map("IdQuote")
   additionalCostId BigInt?  @map("IdAdditionalCost")
-  furnitureId      BigInt   @map("IdFurniture")
+  furnitureId      BigInt?  @map("IdFurniture")
+  quantity         Decimal? @map("Quantity") @db.Decimal(10, 2)
+  totalPrice       Decimal? @map("TotalPrice") @db.Decimal(16, 2)
 
   quote          Quote?          @relation(fields: [quoteId], references: [id], onDelete: Cascade)
   additionalCost AdditionalCost? @relation(fields: [additionalCostId], references: [id])
-  furniture      Furniture       @relation(fields: [furnitureId], references: [id])
+  furniture      Furniture?      @relation(fields: [furnitureId], references: [id])
 
   @@map("quoteadditionalcosts")
 }
@@ -549,12 +552,12 @@ model QuotePart {
   id          BigInt   @id @default(autoincrement()) @map("Id")
   quoteId     BigInt?  @map("IdQuote")
   partId      BigInt?  @map("IdParts")
-  furnitureId BigInt   @map("IdFurniture")
+  furnitureId BigInt?  @map("IdFurniture")
   woodId      BigInt   @map("IdWood")
 
   quote       Quote?    @relation(fields: [quoteId], references: [id], onDelete: Cascade)
   part        Part?     @relation(fields: [partId], references: [id])
-  furniture   Furniture @relation(fields: [furnitureId], references: [id])
+  furniture   Furniture? @relation(fields: [furnitureId], references: [id])
   wood        Wood      @relation(fields: [woodId], references: [id])
 
   @@map("quoteparts")
@@ -564,7 +567,7 @@ model QuoteHardware {
   id          BigInt   @id @default(autoincrement()) @map("Id")
   quoteId     BigInt?  @map("IdQuote")
   hardwareId  BigInt?  @map("IdHardware")
-  furnitureId BigInt   @map("IdFurniture")
+  furnitureId BigInt?  @map("IdFurniture")
   code        String?  @map("Code") @db.VarChar(50)
   quantity    Int      @default(1) @map("Quantity")
   unitMeasure String?  @map("UnitMeasure") @db.VarChar(20)
@@ -572,7 +575,7 @@ model QuoteHardware {
 
   quote       Quote?    @relation(fields: [quoteId], references: [id], onDelete: Cascade)
   hardware    ExtraPart? @relation(fields: [hardwareId], references: [id])
-  furniture   Furniture @relation(fields: [furnitureId], references: [id])
+  furniture   Furniture? @relation(fields: [furnitureId], references: [id])
 
   @@map("quotehardware")
 }
@@ -581,11 +584,13 @@ model QuoteFinish {
   id          BigInt   @id @default(autoincrement()) @map("Id")
   quoteId     BigInt?  @map("IdQuote")
   finishId    BigInt?  @map("IdFinishes")
-  furnitureId BigInt   @map("IdFurniture")
+  furnitureId BigInt?  @map("IdFurniture")
+  quantity    Decimal? @map("Quantity") @db.Decimal(10, 2)
+  totalPrice  Decimal? @map("TotalPrice") @db.Decimal(10, 2)
 
   quote       Quote?    @relation(fields: [quoteId], references: [id], onDelete: Cascade)
   finish      Cost?     @relation(fields: [finishId], references: [id])
-  furniture   Furniture @relation(fields: [furnitureId], references: [id])
+  furniture   Furniture? @relation(fields: [furnitureId], references: [id])
 
   @@map("quotefinishes")
 }
@@ -594,11 +599,13 @@ model QuoteLabor {
   id          BigInt   @id @default(autoincrement()) @map("Id")
   quoteId     BigInt?  @map("IdQuote")
   laborId     BigInt?  @map("IdLaborcost")
-  furnitureId BigInt   @map("IdFurniture")
+  furnitureId BigInt?  @map("IdFurniture")
+  quantity    Decimal? @map("Quantity") @db.Decimal(10, 2)
+  totalPrice  Decimal? @map("TotalPrice") @db.Decimal(10, 2)
 
   quote       Quote?    @relation(fields: [quoteId], references: [id], onDelete: Cascade)
   labor       LaborCost? @relation(fields: [laborId], references: [id])
-  furniture   Furniture @relation(fields: [furnitureId], references: [id])
+  furniture   Furniture? @relation(fields: [furnitureId], references: [id])
 
   @@map("quotelaborcost")
 }
@@ -710,7 +717,7 @@ model FurnitureLaborCostConfig {
   id          BigInt @id @default(autoincrement()) @map("Id")
   idFurniture BigInt @map("IdFurniture")
   idLaborCost BigInt @map("IdLaborCost")
-  quantity    Int @map("Quantity")
+  quantity    Decimal @map("Quantity") @db.Decimal(10, 2)
 
   furniture Furniture @relation(fields: [idFurniture], references: [id], onDelete: Cascade)
   laborCost LaborCost @relation(fields: [idLaborCost], references: [id])
@@ -774,6 +781,7 @@ model LaborCost {
   name    String   @map("Name") @db.VarChar(200)
   dateUpd DateTime @updatedAt @map("DateUpd")
   price   Decimal  @map("Price") @db.Decimal(16, 2)
+  formula String?  @map("Formula") @db.VarChar(200)
 
   furnitureLaborCosts FurnitureLaborCostConfig[]
   quoteLabor          QuoteLabor[]
@@ -786,6 +794,7 @@ model AdditionalCost {
   name    String   @map("Name") @db.VarChar(200)
   dateUpd DateTime @updatedAt @map("DateUpd")
   price   Decimal  @map("Price") @db.Decimal(16, 2)
+  formula String?  @map("Formula") @db.VarChar(200)
 
   furnitureAdditionalCosts FurnitureAdditionalCostConfig[]
   quoteAdditionalCosts     QuoteAdditionalCost[]

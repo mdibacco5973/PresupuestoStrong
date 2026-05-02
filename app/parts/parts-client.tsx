@@ -333,7 +333,7 @@ export function PartsClient({ initialParts }: PartsClientProps) {
                     <Label htmlFor="isWallCabinetWood" className="font-normal cursor-pointer">Altos</Label>
                   </div>
 
-                  {/* Fila 3: Lleva cantos, Laqueado */}
+                  {/* Fila 3: Cantos, Laqueado */}
                   <div className="flex items-center space-x-2">
                     <input
                       type="checkbox"
@@ -342,7 +342,7 @@ export function PartsClient({ initialParts }: PartsClientProps) {
                       onChange={e => setFormData({ ...formData, isEdges: e.target.checked })}
                       className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
                     />
-                    <Label htmlFor="isEdges" className="font-normal cursor-pointer text-primary font-bold">Lleva Cantos</Label>
+                    <Label htmlFor="isEdges" className="font-normal cursor-pointer text-primary">Cantos</Label>
                   </div>
                   <div className="flex items-center space-x-2">
                     <input

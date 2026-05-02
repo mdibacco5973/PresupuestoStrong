@@ -16,6 +16,8 @@ export type QuoteDetailInput = {
 export type QuoteAdditionalCostInput = {
   additionalCostId: number | string | null
   furnitureId: number | string
+  quantity: number | null
+  totalPrice: number | null
 }
 
 export type QuoteWoodInput = {
@@ -48,11 +50,15 @@ export type QuoteHardwareInput = {
 export type QuoteFinishInput = {
   finishId: number | string | null
   furnitureId: number | string
+  quantity: number | null
+  totalPrice: number | null
 }
 
 export type QuoteLaborInput = {
   laborId: number | string | null
   furnitureId: number | string
+  quantity: number | null
+  totalPrice: number | null
 }
 
 export type QuoteInput = {
@@ -97,16 +103,40 @@ function serializeQuote(quote: any) {
       id: d.id.toString(),
       quoteId: d.quoteId?.toString(),
       furnitureId: d.furnitureId.toString(),
+      quantity: Number(d.quantity),
       unitPrice: Number(d.unitPrice),
       price: Number(d.price),
+      length: Number(d.length),
+      width: Number(d.width),
+      depth: Number(d.depth),
+      furniture: d.furniture ? {
+        id: d.furniture.id.toString(),
+        name: d.furniture.name,
+        code: d.furniture.code,
+        length: Number(d.furniture.length),
+        width: Number(d.furniture.width),
+        depth: Number(d.furniture.depth),
+        furniturePrice: Number(d.furniture.furniturePrice),
+        hardwarePrice: Number(d.furniture.hardwarePrice),
+        costPrice: Number(d.furniture.costPrice),
+        laborPrice: Number(d.furniture.laborPrice),
+        additionalPrice: Number(d.furniture.additionalPrice),
+        furnitureTotal: Number(d.furniture.furnitureTotal),
+      } : undefined
     })),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     additionalCosts: quote.additionalCosts?.map((ac: any) => ({
-      ...ac,
       id: ac.id.toString(),
       quoteId: ac.quoteId?.toString(),
       additionalCostId: ac.additionalCostId?.toString(),
-      furnitureId: ac.furnitureId.toString(),
+      furnitureId: ac.furnitureId?.toString(),
+      quantity: ac.quantity ? Number(ac.quantity) : null,
+      totalPrice: ac.totalPrice ? Number(ac.totalPrice) : null,
+      additionalCost: ac.additionalCost ? {
+        id: ac.additionalCost.id.toString(),
+        name: ac.additionalCost.name,
+        price: Number(ac.additionalCost.price),
+      } : undefined
     })),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     woods: quote.woods?.map((w: any) => ({
@@ -120,6 +150,12 @@ function serializeQuote(quote: any) {
       priceTotalWood: Number(w.priceTotalWood),
       surfaceTotalPiece: Number(w.surfaceTotalPiece),
       priceTotalPiece: Number(w.priceTotalPiece),
+      wood: w.wood ? {
+        ...w.wood,
+        id: w.wood.id.toString(),
+        price: Number(w.wood.price),
+        thickness: Number(w.wood.thickness),
+      } : undefined
     })),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     parts: quote.parts?.map((p: any) => ({
@@ -127,8 +163,13 @@ function serializeQuote(quote: any) {
       id: p.id.toString(),
       quoteId: p.quoteId?.toString(),
       partId: p.partId?.toString(),
-      furnitureId: p.furnitureId.toString(),
+      furnitureId: p.furnitureId?.toString(),
       woodId: p.woodId.toString(),
+      part: p.part ? {
+        ...p.part,
+        id: p.part.id.toString(),
+        price: Number(p.part.price),
+      } : undefined
     })),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     hardware: quote.hardware?.map((h: any) => ({
@@ -136,24 +177,42 @@ function serializeQuote(quote: any) {
       id: h.id.toString(),
       quoteId: h.quoteId?.toString(),
       hardwareId: h.hardwareId?.toString(),
-      furnitureId: h.furnitureId.toString(),
+      furnitureId: h.furnitureId?.toString(),
       totalPrice: h.totalPrice ? Number(h.totalPrice) : null,
+      hardware: h.hardware ? {
+        ...h.hardware,
+        id: h.hardware.id.toString(),
+        price: Number(h.hardware.price),
+        totalPrice: Number(h.hardware.totalPrice || 0),
+      } : undefined
     })),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     finishes: quote.finishes?.map((f: any) => ({
-      ...f,
       id: f.id.toString(),
       quoteId: f.quoteId?.toString(),
       finishId: f.finishId?.toString(),
-      furnitureId: f.furnitureId.toString(),
+      furnitureId: f.furnitureId?.toString(),
+      quantity: f.quantity ? Number(f.quantity) : null,
+      totalPrice: f.totalPrice ? Number(f.totalPrice) : null,
+      finish: f.finish ? {
+        id: f.finish.id.toString(),
+        name: f.finish.name,
+        price: Number(f.finish.price),
+      } : undefined
     })),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     labor: quote.labor?.map((l: any) => ({
-      ...l,
       id: l.id.toString(),
       quoteId: l.quoteId?.toString(),
       laborId: l.laborId?.toString(),
-      furnitureId: l.furnitureId.toString(),
+      furnitureId: l.furnitureId?.toString(),
+      quantity: l.quantity ? Number(l.quantity) : null,
+      totalPrice: l.totalPrice ? Number(l.totalPrice) : null,
+      laborCost: l.laborCost ? {
+        id: l.laborCost.id.toString(),
+        name: l.laborCost.name,
+        price: Number(l.laborCost.price),
+      } : undefined
     })),
   }
 }
@@ -162,7 +221,7 @@ export async function getQuotes() {
   const quotes = await prisma.quote.findMany({
     include: {
       client: true,
-      details: true,
+      details: { include: { furniture: true } },
       additionalCosts: true,
       parts: true,
       hardware: true,
@@ -180,7 +239,7 @@ export async function getQuoteById(id: string) {
     where: { id: BigInt(id) },
     include: {
       client: true,
-      details: true,
+      details: { include: { furniture: true } },
       additionalCosts: true,
       parts: true,
       hardware: true,
@@ -219,12 +278,14 @@ export async function createQuote(data: QuoteInput) {
           depth: detail.depth,
         }))
       },
-      additionalCosts: {
-        create: (data.additionalCosts || []).map(c => ({
-          additionalCost: c.additionalCostId ? { connect: { id: BigInt(c.additionalCostId) } } : undefined,
-          furniture: { connect: { id: BigInt(c.furnitureId) } },
-        }))
-      },
+        additionalCosts: {
+          create: (data.additionalCosts || []).map(c => ({
+            additionalCost: c.additionalCostId ? { connect: { id: BigInt(c.additionalCostId) } } : undefined,
+            furniture: c.furnitureId ? { connect: { id: BigInt(c.furnitureId) } } : undefined,
+            quantity: c.quantity,
+            totalPrice: c.totalPrice,
+          }))
+        },
       woods: {
         create: (data.woods || []).map(w => ({
           wood: { connect: { id: BigInt(w.woodId) } },
@@ -241,14 +302,14 @@ export async function createQuote(data: QuoteInput) {
       parts: {
         create: (data.parts || []).map(part => ({
           part: part.partId ? { connect: { id: BigInt(part.partId) } } : undefined,
-          furniture: { connect: { id: BigInt(part.furnitureId) } },
+          furniture: part.furnitureId ? { connect: { id: BigInt(part.furnitureId) } } : undefined,
           wood: { connect: { id: BigInt(part.woodId) } },
         }))
       },
       hardware: {
         create: (data.hardware || []).map(hw => ({
           hardware: hw.hardwareId ? { connect: { id: BigInt(hw.hardwareId) } } : undefined,
-          furniture: { connect: { id: BigInt(hw.furnitureId) } },
+          furniture: hw.furnitureId ? { connect: { id: BigInt(hw.furnitureId) } } : undefined,
           code: hw.code,
           quantity: hw.quantity,
           unitMeasure: hw.unitMeasure,
@@ -258,18 +319,22 @@ export async function createQuote(data: QuoteInput) {
       finishes: {
         create: (data.finishes || []).map(f => ({
           finish: f.finishId ? { connect: { id: BigInt(f.finishId) } } : undefined,
-          furniture: { connect: { id: BigInt(f.furnitureId) } },
+          furniture: f.furnitureId ? { connect: { id: BigInt(f.furnitureId) } } : undefined,
+          quantity: f.quantity,
+          totalPrice: f.totalPrice,
         }))
       },
       labor: {
         create: (data.labor || []).map(l => ({
           labor: l.laborId ? { connect: { id: BigInt(l.laborId) } } : undefined,
-          furniture: { connect: { id: BigInt(l.furnitureId) } },
+          furniture: l.furnitureId ? { connect: { id: BigInt(l.furnitureId) } } : undefined,
+          quantity: l.quantity,
+          totalPrice: l.totalPrice,
         }))
       }
     },
     include: {
-        details: true,
+        details: { include: { furniture: true } },
         additionalCosts: true,
         parts: true,
         hardware: true,
@@ -326,7 +391,9 @@ export async function updateQuote(id: string, data: QuoteInput) {
         additionalCosts: {
           create: (data.additionalCosts || []).map(c => ({
             additionalCost: c.additionalCostId ? { connect: { id: BigInt(c.additionalCostId) } } : undefined,
-            furniture: { connect: { id: BigInt(c.furnitureId) } },
+            furniture: c.furnitureId ? { connect: { id: BigInt(c.furnitureId) } } : undefined,
+            quantity: c.quantity,
+            totalPrice: c.totalPrice,
           }))
         },
         woods: {
@@ -345,14 +412,14 @@ export async function updateQuote(id: string, data: QuoteInput) {
         parts: {
           create: (data.parts || []).map(part => ({
             part: part.partId ? { connect: { id: BigInt(part.partId) } } : undefined,
-            furniture: { connect: { id: BigInt(part.furnitureId) } },
+            furniture: part.furnitureId ? { connect: { id: BigInt(part.furnitureId) } } : undefined,
             wood: { connect: { id: BigInt(part.woodId) } },
           }))
         },
         hardware: {
           create: (data.hardware || []).map(hw => ({
             hardware: hw.hardwareId ? { connect: { id: BigInt(hw.hardwareId) } } : undefined,
-            furniture: { connect: { id: BigInt(hw.furnitureId) } },
+            furniture: hw.furnitureId ? { connect: { id: BigInt(hw.furnitureId) } } : undefined,
             code: hw.code,
             quantity: hw.quantity,
             unitMeasure: hw.unitMeasure,
@@ -362,18 +429,22 @@ export async function updateQuote(id: string, data: QuoteInput) {
         finishes: {
           create: (data.finishes || []).map(f => ({
             finish: f.finishId ? { connect: { id: BigInt(f.finishId) } } : undefined,
-            furniture: { connect: { id: BigInt(f.furnitureId) } },
+            furniture: f.furnitureId ? { connect: { id: BigInt(f.furnitureId) } } : undefined,
+            quantity: f.quantity,
+            totalPrice: f.totalPrice,
           }))
         },
         labor: {
           create: (data.labor || []).map(l => ({
             labor: l.laborId ? { connect: { id: BigInt(l.laborId) } } : undefined,
-            furniture: { connect: { id: BigInt(l.furnitureId) } },
+            furniture: l.furnitureId ? { connect: { id: BigInt(l.furnitureId) } } : undefined,
+            quantity: l.quantity,
+            totalPrice: l.totalPrice,
           }))
         }
       },
       include: {
-        details: true,
+        details: { include: { furniture: true } },
         additionalCosts: true,
         parts: true,
         hardware: true,
@@ -386,6 +457,74 @@ export async function updateQuote(id: string, data: QuoteInput) {
 
   revalidatePath('/quotes')
   return serializeQuote(updated)
+}
+
+export async function duplicateQuote(id: string) {
+  const source = await getQuoteById(id)
+  if (!source) throw new Error('Quote not found')
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { id: _, client: __, ...rest } = source
+
+  const newData: QuoteInput = {
+    ...rest,
+    code: `${source.code} (Copia)`,
+    date: new Date(),
+    dateDelivery: new Date(),
+    details: source.details.map((d: any) => ({
+      furnitureId: d.furnitureId,
+      quantity: d.quantity,
+      unitPrice: d.unitPrice,
+      price: d.price,
+      length: d.length,
+      width: d.width,
+      depth: d.depth
+    })),
+    additionalCosts: source.additionalCosts.map((ac: any) => ({
+      additionalCostId: ac.additionalCostId,
+      furnitureId: ac.furnitureId,
+      quantity: ac.quantity,
+      totalPrice: ac.totalPrice
+    })),
+    woods: source.woods.map((w: any) => ({
+      woodId: w.woodId,
+      quantity: w.quantity,
+      surfaceWood: w.surfaceWood,
+      surfaceTotalWood: w.surfaceTotalWood,
+      priceWood: w.priceWood,
+      priceTotalWood: w.priceTotalWood,
+      surfaceTotalPiece: w.surfaceTotalPiece,
+      priceTotalPiece: w.priceTotalPiece,
+      quantityCut: w.quantityCut
+    })),
+    parts: source.parts.map((p: any) => ({
+      partId: p.partId,
+      furnitureId: p.furnitureId,
+      woodId: p.woodId
+    })),
+    hardware: source.hardware.map((h: any) => ({
+      hardwareId: h.hardwareId,
+      furnitureId: h.furnitureId,
+      code: h.code,
+      quantity: h.quantity,
+      unitMeasure: h.unitMeasure,
+      totalPrice: h.totalPrice
+    })),
+    finishes: source.finishes.map((f: any) => ({
+      finishId: f.finishId,
+      furnitureId: f.furnitureId,
+      quantity: f.quantity,
+      totalPrice: f.totalPrice
+    })),
+    labor: source.labor.map((l: any) => ({
+      laborId: l.laborId,
+      furnitureId: l.furnitureId,
+      quantity: l.quantity,
+      totalPrice: l.totalPrice
+    }))
+  }
+
+  return createQuote(newData)
 }
 
 export async function deleteQuote(id: string) {

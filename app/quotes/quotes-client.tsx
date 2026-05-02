@@ -1,8 +1,10 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { Plus, Pencil, Trash2, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, FileText } from 'lucide-react'
-import { QuoteInput, QuoteDetailInput, QuoteAdditionalCostInput, QuotePartInput, QuoteHardwareInput, QuoteFinishInput, QuoteLaborInput, QuoteWoodInput, createQuote, updateQuote, deleteQuote } from '@/app/actions/quote'
+import { Plus, Pencil, Trash2, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, FileText, Copy, Search } from 'lucide-react'
+import { QuoteInput, QuoteDetailInput, QuoteAdditionalCostInput, QuotePartInput, QuoteHardwareInput, QuoteFinishInput, QuoteLaborInput, QuoteWoodInput, createQuote, updateQuote, deleteQuote, duplicateQuote, getQuotes } from '@/app/actions/quote'
+import jsPDF from 'jspdf'
+import autoTable from 'jspdf-autotable'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -75,6 +77,8 @@ type QuoteAdditionalCost = {
   id: string | number
   additionalCostId: string | number
   furnitureId: string | number
+  quantity?: number | null
+  totalPrice?: number | null
 }
 
 type QuoteHardware = {
@@ -91,12 +95,16 @@ type QuoteFinish = {
   id: string | number
   finishId: string | number
   furnitureId: string | number
+  quantity?: number | null
+  totalPrice?: number | null
 }
 
 type QuoteLabor = {
   id: string | number
   laborId: string | number
   furnitureId: string | number
+  quantity?: number | null
+  totalPrice?: number | null
 }
 
 type QuoteDetail = {
@@ -199,24 +207,12 @@ export function QuotesClient({
   useEffect(() => {
     const totalDetailsPrice = formData.details.reduce((acc, d) => acc + d.price, 0)
     const totalAdditionalPrice = formData.additionalCosts.reduce((acc, c) => {
-      const data = additionalCosts.find(ac => ac.id === c.additionalCostId)
-      return acc + (data ? Number(data.price) : 0)
+      return acc + (c.totalPrice || 0)
     }, 0)
 
-    const hardwareTotal = formData.hardware.reduce((acc, hw) => {
-      const hwData = extraParts.find(p => p.id === hw.hardwareId)
-      return acc + (hwData ? Number(hwData.price) : 0)
-    }, 0)
-
-    const finishesTotal = formData.finishes.reduce((acc, f) => {
-      const fData = costs.find(c => c.id === f.finishId)
-      return acc + (fData ? Number(fData.price) : 0)
-    }, 0)
-
-    const laborTotal = formData.labor.reduce((acc, l) => {
-      const lData = laborCosts.find(lc => lc.id === l.laborId)
-      return acc + (lData ? Number(lData.price) : 0)
-    }, 0)
+    const hardwareTotal = formData.hardware.reduce((acc, hw) => acc + (hw.totalPrice || 0), 0)
+    const finishesTotal = formData.finishes.reduce((acc, f) => acc + (f.totalPrice || 0), 0)
+    const laborTotal = formData.labor.reduce((acc, l) => acc + (l.totalPrice || 0), 0)
 
     const totalCostPesos = totalDetailsPrice + totalAdditionalPrice + hardwareTotal + finishesTotal + laborTotal
     
@@ -247,6 +243,52 @@ export function QuotesClient({
 
   const defaultWood = woods?.find(w => w.isDefaultWood) || woods?.[0]
 
+  const calculateDetailPrice = (detail: QuoteDetailInput, currentParts: QuotePartInput[]) => {
+    const furniture = furnitures.find(f => f.id.toString() === detail.furnitureId.toString())
+    if (!furniture) return detail.unitPrice
+
+    let partsPriceTotal = 0
+    
+    if (furniture.parts) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      furniture.parts.forEach((p: any) => {
+        const partDef = p.part
+        if (!partDef) return
+        
+        // Buscar madera asignada a esta pieza para este mueble específico
+        // Nota: En la solapa de piezas, las piezas están agrupadas o individuales
+        // Si están individuales, buscamos por furnitureId y partId
+        const assignment = currentParts.find(qp => 
+          qp.furnitureId?.toString() === detail.furnitureId.toString() && 
+          qp.partId?.toString() === partDef.id.toString()
+        )
+        
+        const wood = woods.find(w => w.id.toString() === assignment?.woodId?.toString()) || defaultWood
+        if (!wood) return
+
+        const context = {
+          L: Number(detail.length),
+          A: Number(detail.width),
+          P: Number(detail.depth),
+          E: Number(wood.thickness)
+        }
+        
+        const length = evaluateFormula(partDef.formulaLength, context)
+        const width = evaluateFormula(partDef.formulaWidth, context)
+        const quantity = p.quantity || 1
+        
+        const surfaceM2 = (length * width * quantity) / 1000000
+        const boardSurfaceM2 = (Number(wood.length) * Number(wood.width)) / 1000000
+        const pricePerM2 = boardSurfaceM2 > 0 ? Number(wood.price) / boardSurfaceM2 : 0
+        
+        partsPriceTotal += surfaceM2 * pricePerM2
+      })
+    }
+    
+    // Sumar el resto de los costos fijos del mueble (herrajes, extras, mano de obra, etc.)
+    return partsPriceTotal + (furniture.hardwarePrice || 0) + (furniture.costPrice || 0) + (furniture.laborPrice || 0) + (furniture.additionalPrice || 0)
+  }
+
   const evaluateFormula = (formula: string, context: { L: number, A: number, P: number, E: number }) => {
     if (!formula) return 0
     try {
@@ -257,7 +299,7 @@ export function QuotesClient({
         .replace(/E/g, context.E.toString())
       const result = new Function(`return ${expression}`)()
       return Math.max(0, Math.round(result))
-    } catch (e) {
+    } catch {
       return 0
     }
   }
@@ -363,7 +405,58 @@ export function QuotesClient({
         priceTotalPiece: totalPiecesPrice
       }
     })
-  }, [formData.details, formData.parts, furnitures, woods, defaultWood])
+  }, [formData.details, formData.parts, furnitures, woods, defaultWood, extraParts])
+  
+  const calculateFrontSurface = () => {
+    let totalSurfaceM2 = 0
+    
+    formData.details.forEach(detail => {
+      const furniture = furnitures.find(f => f.id === detail.furnitureId)
+      if (!furniture || !furniture.parts) return
+
+      // Iterar sobre las piezas que componen este mueble
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      furniture.parts.forEach((p: any) => {
+        // Solo piezas marcadas como Frente
+        if (!p.part?.isFront) return
+        
+        // Obtener espesor de la madera asignada a esta pieza en este presupuesto
+        let thickness = 18
+        const assignment = formData.parts.find(qp => 
+          qp.furnitureId === detail.furnitureId && 
+          qp.partId === p.part.id
+        )
+        
+        if (assignment) {
+          const wood = woods.find(w => w.id === assignment.woodId)
+          if (wood) thickness = wood.thickness
+        } else {
+          // Si no hay asignación, buscar la madera por defecto
+          if (defaultWood) thickness = defaultWood.thickness
+        }
+        
+        const context = {
+          L: detail.length,
+          A: detail.width,
+          P: detail.depth,
+          E: thickness
+        }
+
+        // Evaluar dimensiones de la pieza según su fórmula
+        const l = evaluateFormula(p.part.formulaLength, context)
+        const w = evaluateFormula(p.part.formulaWidth, context)
+
+        if (l > 0 && w > 0) {
+          // Calcular superficie de ESTA pieza en m2
+          const pieceSurfaceM2 = (l * w) / 1000000
+          // Sumar al total: superficie * cantidad de piezas en el mueble * cantidad de muebles en el presupuesto
+          totalSurfaceM2 += pieceSurfaceM2 * p.quantity * detail.quantity
+        }
+      })
+    })
+    
+    return Number(totalSurfaceM2.toFixed(4)) // Más decimales para precisión
+  }
 
   const requestSort = (key: string) => {
     let direction: 'asc' | 'desc' = 'asc'
@@ -376,13 +469,16 @@ export function QuotesClient({
   const sortedQuotes = [...quotes].sort((a, b) => {
     if (!sortConfig) return 0
     const { key, direction } = sortConfig
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const aValue = (a as any)[key]
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const bValue = (b as any)[key]
+    
+    const getValue = (obj: any, path: string) => {
+      return path.split('.').reduce((o, i) => (o ? o[i] : null), obj)
+    }
+    
+    const aValue = getValue(a, key)
+    const bValue = getValue(b, key)
 
-    if (aValue === null) return 1
-    if (bValue === null) return -1
+    if (aValue === null || aValue === undefined) return 1
+    if (bValue === null || bValue === undefined) return -1
     if (aValue < bValue) return direction === 'asc' ? -1 : 1
     if (aValue > bValue) return direction === 'asc' ? 1 : -1
     return 0
@@ -464,7 +560,9 @@ export function QuotesClient({
       additionalCosts: (quote.additionalCosts || []).map(c => ({
         id: c.id,
         additionalCostId: c.additionalCostId ?? null,
-        furnitureId: c.furnitureId
+        furnitureId: c.furnitureId,
+        quantity: c.quantity ?? 1,
+        totalPrice: c.totalPrice ?? 0
       })),
       parts: (quote.parts || []).map(p => ({
         id: p.id,
@@ -484,12 +582,16 @@ export function QuotesClient({
       finishes: (quote.finishes || []).map(f => ({
         id: f.id,
         finishId: f.finishId ?? null,
-        furnitureId: f.furnitureId
+        furnitureId: f.furnitureId,
+        quantity: f.quantity ?? 1,
+        totalPrice: f.totalPrice ?? 0
       })),
       labor: (quote.labor || []).map(l => ({
         id: l.id,
         laborId: l.laborId ?? null,
-        furnitureId: l.furnitureId
+        furnitureId: l.furnitureId,
+        quantity: l.quantity ?? 1,
+        totalPrice: l.totalPrice ?? 0
       })),
       woods: (quote.woods || []).map(w => ({
         id: w.id,
@@ -505,6 +607,218 @@ export function QuotesClient({
       }))
     })
     setIsOpen(true)
+  }
+
+  const handleDuplicate = async (id: string) => {
+    if (!confirm('¿Estás seguro de que deseas duplicar este presupuesto?')) return
+    setIsLoading(true)
+    try {
+      await duplicateQuote(id)
+      const updatedQuotes = await getQuotes()
+      setQuotes(updatedQuotes)
+    } catch (error) {
+      console.error('Error duplicando presupuesto:', error)
+      alert('Hubo un error al duplicar el presupuesto.')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const generatePDF = (quote: Quote) => {
+    const doc = new jsPDF()
+    const pageWidth = doc.internal.pageSize.getWidth()
+    const pageHeight = doc.internal.pageSize.getHeight()
+
+    // --- Colores y Fuentes ---
+    const sageGreen = [102, 122, 107]
+    const black = [0, 0, 0]
+    const gray = [100, 100, 100]
+    const today = new Date().toLocaleDateString('es-AR', {
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric'
+    }).toUpperCase()
+
+    // --- Helpers de Diseño ---
+    const drawSidebar = () => {
+      doc.setDrawColor(0, 0, 0)
+      doc.setLineWidth(0.3)
+      doc.line(60, 20, 60, pageHeight - 20)
+      doc.setTextColor(0, 0, 0)
+      doc.setFontSize(55)
+      doc.setFont('helvetica', 'bold')
+      doc.text('strongwood®', 45, pageHeight - 30, { angle: 90 })
+      doc.setFontSize(8)
+      doc.setFont('helvetica', 'normal')
+      doc.text('DISEÑAMOS    Y    EJECUTAMOS', 30, 45, { angle: 90 })
+      doc.text('PROYECTOS    INTEGRALES', 34, 45, { angle: 90 })
+      doc.text('DE MUEBLES A MEDIDA', 38, 45, { angle: 90 })
+    }
+
+    const drawHeaderLogo = (x = 78, y = 25) => {
+      doc.setFillColor(0, 0, 0)
+      doc.rect(x, y, 12, 12, 'F')
+      doc.rect(x + 14, y, 12, 12, 'F')
+      doc.rect(x, y + 14, 12, 12, 'F')
+    }
+
+    const drawCommonHeader = () => {
+      doc.setFontSize(7)
+      doc.setFont('helvetica', 'normal')
+      doc.setTextColor(0, 0, 0)
+      doc.text('DISEÑAMOS    Y    EJECUTAMOS', 65, 30)
+      doc.text('PROYECTOS    INTEGRALES', 65, 34)
+      doc.text('DE MUEBLES A MEDIDA', 65, 38)
+      doc.setFontSize(16)
+      doc.setFont('helvetica', 'bold')
+      doc.text('strongwood®', pageWidth - 20, 35, { align: 'right' })
+      doc.setFillColor(0, 0, 0)
+      doc.rect(20, 25, 9, 9, 'F')
+      doc.rect(30, 25, 9, 9, 'F')
+      doc.rect(20, 35, 9, 9, 'F')
+    }
+
+    // --- PÁGINA 1: PORTADA ---
+    doc.setFillColor(sageGreen[0], sageGreen[1], sageGreen[2])
+    doc.rect(0, 0, pageWidth, pageHeight, 'F')
+    doc.setFillColor(0, 0, 0)
+    doc.rect(40, 40, 30, 30, 'F')
+    doc.rect(72, 40, 30, 30, 'F')
+    doc.rect(40, 72, 30, 30, 'F')
+    doc.setFontSize(14)
+    doc.setFont('helvetica', 'normal')
+    doc.setTextColor(0, 0, 0)
+    doc.text('DISEÑAMOS Y EJECUTAMOS', pageWidth - 40, 55, { align: 'right' })
+    doc.text('PROYECTOS INTEGRALES', pageWidth - 40, 62, { align: 'right' })
+    doc.text('DE MUEBLES A MEDIDA', pageWidth - 40, 69, { align: 'right' })
+    doc.setFontSize(35)
+    doc.text('/PRESUPUESTO', pageWidth - 40, 160, { align: 'right' })
+    doc.text('2026', pageWidth - 40, 175, { align: 'right' })
+    doc.setFontSize(70)
+    doc.setFont('helvetica', 'bold')
+    doc.text('strongwood®', 35, pageHeight - 40)
+
+    // --- PÁGINA 2: QUIENES SOMOS ---
+    doc.addPage()
+    drawCommonHeader()
+    doc.setFontSize(50)
+    doc.setFont('helvetica', 'bold')
+    doc.text('( QUIENES SOMOS )', 20, 120)
+    doc.setFontSize(14)
+    doc.setFont('helvetica', 'normal')
+    const qsText = 'Strongwood es una empresa familiar especializada en el desarrollo, fabricación e instalación de mobiliario a medida para proyectos de vivienda ó industria.\n\nTrabajamos integrando diseño funcional, precisión técnica y procesos constructivos controlados, acompañando cada proyecto desde el relevamiento inicial hasta la instalación final.'
+    doc.text(doc.splitTextToSize(qsText, pageWidth - 40), 20, 200)
+
+    // --- PÁGINA 3: COMO TRABAJAMOS ---
+    doc.addPage()
+    doc.setFontSize(40)
+    doc.setFont('helvetica', 'bold')
+    doc.text('SW.', 20, 50)
+    doc.setFontSize(20)
+    doc.text('( COMO TRABAJAMOS )', pageWidth - 20, 50, { align: 'right' })
+    doc.setLineWidth(0.5)
+    doc.line(20, 60, pageWidth - 20, 60)
+    doc.setFontSize(14)
+    doc.setFont('helvetica', 'normal')
+    const ctText = 'En Strongwood desarrollamos cada proyecto mediante un proceso organizado que incluye relevamiento, desarrollo técnico, fabricación en taller y instalación con control de calidad en cada etapa, garantizando precisión, cumplimiento y terminaciones correctas.'
+    doc.text(doc.splitTextToSize(ctText, pageWidth - 40), 20, 80)
+    // Timeline simplificado
+    const steps = ['01 Relevamiento', '02 Desarrollo', '03 Fabricación', '04 Control', '05 Traslado', '06 Instalación']
+    steps.forEach((s, i) => doc.text(s, 20, 150 + (i * 15)))
+
+    // --- PÁGINA 4: PRESUPUESTO ---
+    doc.addPage()
+    drawSidebar()
+    drawHeaderLogo()
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'normal')
+    doc.text(today, pageWidth - 20, 30, { align: 'right' })
+    doc.setFont('helvetica', 'bold')
+    doc.text('CLIENTE:', pageWidth - 20, 50, { align: 'right' })
+    doc.setFont('helvetica', 'normal')
+    doc.text(quote.client?.name || 'CLIENTE', pageWidth - 20, 56, { align: 'right' })
+    doc.text(`PROYECTO: ${quote.description.toUpperCase()}`, 78, 85)
+    const budgetData = quote.details.map(d => [
+      `Fabricación de ${d.furniture.name} \n${d.furniture.code} - Medidas: ${d.length}x${d.width}x${d.depth}mm`,
+      formatCurrency(d.price)
+    ])
+    // Cálculo de Logística: Suma de todo lo que NO es mueble
+    const totalLogistics = (quote.hardware.reduce((sum, h) => sum + (h.totalPrice || 0), 0)) +
+                           (quote.finishes.reduce((sum, f) => sum + (f.totalPrice || 0), 0)) +
+                           (quote.labor.reduce((sum, l) => sum + (l.totalPrice || 0), 0))
+    budgetData.push(['Logística, traslado e instalación', formatCurrency(totalLogistics)])
+
+    autoTable(doc, {
+      startY: 125,
+      margin: { left: 78, right: 20 },
+      head: [['DESCRIPCIÓN', 'VALOR']],
+      body: budgetData,
+      theme: 'plain',
+      headStyles: { fontStyle: 'bold', textColor: [0, 0, 0], fillColor: [255, 255, 255] },
+      bodyStyles: { fontSize: 9, cellPadding: 6 },
+      columnStyles: { 1: { halign: 'right', fontStyle: 'bold' } },
+      didDrawPage: () => { doc.line(78, 120, pageWidth - 20, 120) }
+    })
+    const finalY4 = (doc as any).lastAutoTable.finalY + 15
+    doc.setFont('helvetica', 'bold')
+    doc.text('TOTAL', pageWidth - 80, finalY4 + 20)
+    doc.text(formatCurrency(quote.pricePesos), pageWidth - 20, finalY4 + 20, { align: 'right' })
+
+    // --- PÁGINA 5: ANEXO TÉCNICO ---
+    doc.addPage()
+    drawCommonHeader()
+    doc.setFontSize(20)
+    doc.setFont('helvetica', 'bold')
+    doc.text('ANEXO TÉCNICO: MATERIALES', 20, 80)
+    doc.setLineWidth(0.5)
+    doc.line(20, 85, pageWidth - 20, 85)
+    doc.setFontSize(12)
+    doc.setFont('helvetica', 'normal')
+    // Listar maderas únicas
+    const uniqueWoodIds = Array.from(new Set(quote.parts.map(p => p.woodId)))
+    const woodNames = uniqueWoodIds.map(id => woods.find(w => w.id === id)?.name || 'Madera seleccionada')
+    doc.text('Maderas a utilizar en la fabricación:', 20, 105)
+    woodNames.forEach((name, i) => doc.text(`• ${name}`, 25, 115 + (i * 10)))
+
+    // --- PÁGINA 6: SERVICIOS COMPLEMENTARIOS ---
+    doc.addPage()
+    drawCommonHeader()
+    doc.setFontSize(20)
+    doc.text('SERVICIOS COMPLEMENTARIOS', 20, 80)
+    doc.line(20, 85, pageWidth - 20, 85)
+    const extraCostsData = quote.additionalCosts.map(c => {
+      const data = additionalCosts.find(ac => ac.id === c.additionalCostId)
+      return [data?.name || 'Servicio Extra', formatCurrency(c.totalPrice || 0)]
+    })
+    autoTable(doc, {
+      startY: 100,
+      head: [['DESCRIPCIÓN', 'VALOR']],
+      body: extraCostsData,
+      theme: 'plain',
+      headStyles: { fontStyle: 'bold' },
+      columnStyles: { 1: { halign: 'right' } }
+    })
+
+    // --- PÁGINA 7: MATERIALES (LOGOS) ---
+    doc.addPage()
+    doc.setFontSize(20)
+    doc.text('( MATERIALES )', pageWidth - 20, 50, { align: 'right' })
+    doc.setFontSize(12)
+    doc.text(doc.splitTextToSize('En Strongwood trabajamos con materiales y herrajes provistos por marcas reconocidas del mercado...', pageWidth - 40), 20, 80)
+    doc.setFont('helvetica', 'bold')
+    const brands = ['HAFELE', 'BLUM', 'EUROHARD', 'E. EGGER', 'FAPLAC']
+    brands.forEach((b, i) => doc.text(b, 50, 150 + (i * 15)))
+
+    // --- PÁGINA 8: CONDICIONES ---
+    doc.addPage()
+    doc.setFontSize(40)
+    doc.text('( CONDICIONES )', 20, 80)
+    doc.setFontSize(11)
+    const condText = '/ Fecha de entrega: A coordinar según cronograma de obra. Entrega entre 35 a 55 días hábiles.\n\n/ Condición de pago: 70% anticipo para inicio de fabricación y 30% contra entrega.\n\nEl precio podrá modificarse en caso de no mediar anticipo o si se detectan diferencias en las mediciones finales.'
+    doc.text(doc.splitTextToSize(condText, pageWidth - 40), 20, 120)
+    doc.text('strongwoodventas@gmail.com | (011) 7119-6506', pageWidth / 2, pageHeight - 30, { align: 'center' })
+
+    doc.save(`Presupuesto_${quote.code}_Full.pdf`)
   }
 
   const handleDelete = async (id: string) => {
@@ -543,11 +857,11 @@ export function QuotesClient({
       if (editingQuote) {
         const updated = await updateQuote(editingQuote.id, submissionData)
         setQuotes((prev) =>
-          prev.map((q) => (q.id === editingQuote.id ? { ...updated, client: { name: clients.find(c => c.id === formData.clientId)?.name || null } } : q))
+          prev.map((q) => (q.id === editingQuote.id ? { ...updated, client: { name: clients.find(c => c.id.toString() === formData.clientId.toString())?.name || null } } : q))
         )
       } else {
         const created = await createQuote(submissionData)
-        setQuotes((prev) => [{ ...created, client: { name: clients.find(c => c.id === formData.clientId)?.name || null } }, ...prev])
+        setQuotes((prev) => [{ ...created, client: { name: clients.find(c => c.id.toString() === formData.clientId.toString())?.name || null } }, ...prev])
       }
       setIsOpen(false)
       resetForm()
@@ -559,34 +873,59 @@ export function QuotesClient({
     }
   }
 
-  const addDetail = () => {
-    const availableFurnitures = furnitures.filter(f => 
-      !formData.details.some(d => d.furnitureId === f.id && d.length === f.length && d.width === f.width && d.depth === f.depth)
-    )
+  const mergeDuplicates = (details: QuoteDetailInput[]) => {
+    const mergedMap = new Map<string, QuoteDetailInput>()
     
-    const furnitureToAdd = availableFurnitures.length > 0 ? availableFurnitures[0] : furnitures[0]
-    
-    setFormData({
-      ...formData,
-      details: [
-        ...formData.details,
-        {
-          furnitureId: furnitureToAdd.id,
-          quantity: 1,
-          unitPrice: furnitureToAdd.furnitureTotal || 0,
-          price: furnitureToAdd.furnitureTotal || 0,
-          length: furnitureToAdd.length || 0,
-          width: furnitureToAdd.width || 0,
-          depth: furnitureToAdd.depth || 0,
-        }
-      ]
+    details.forEach(d => {
+      // Clave única: ID + Largo + Ancho + Profundidad
+      const key = `${d.furnitureId}-${d.length}-${d.width}-${d.depth}`
+      if (mergedMap.has(key)) {
+        const existing = mergedMap.get(key)!
+        existing.quantity += d.quantity
+        existing.price = existing.quantity * existing.unitPrice
+      } else {
+        mergedMap.set(key, { ...d })
+      }
     })
+    
+    return Array.from(mergedMap.values())
+  }
+
+  const addDetail = () => {
+    const furnitureToAdd = furnitures[0]
+    if (!furnitureToAdd) return
+
+    const newDetail: QuoteDetailInput = {
+      furnitureId: furnitureToAdd.id,
+      quantity: 1,
+      unitPrice: furnitureToAdd.furnitureTotal || 0,
+      price: furnitureToAdd.furnitureTotal || 0,
+      length: furnitureToAdd.length || 0,
+      width: furnitureToAdd.width || 0,
+      depth: furnitureToAdd.depth || 0,
+    }
+
+    setFormData(prev => ({
+      ...prev,
+      details: mergeDuplicates([...prev.details, newDetail])
+    }))
   }
 
   const removeDetail = (index: number) => {
     setFormData({
       ...formData,
       details: formData.details.filter((_, i) => i !== index)
+    })
+  }
+
+  const recalculatePrices = (details: QuoteDetailInput[], parts: QuotePartInput[]) => {
+    return details.map(detail => {
+      const newUnitPrice = calculateDetailPrice(detail, parts)
+      return {
+        ...detail,
+        unitPrice: newUnitPrice,
+        price: newUnitPrice * detail.quantity
+      }
     })
   }
 
@@ -598,19 +937,23 @@ export function QuotesClient({
       detail.price = detail.unitPrice * detail.quantity
     }
     
-    if ('furnitureId' in updates) {
-      const furniture = furnitures.find(f => f.id === updates.furnitureId)
+    if ('furnitureId' in updates || 'length' in updates || 'width' in updates || 'depth' in updates) {
+      const furniture = furnitures.find(f => f.id === (updates.furnitureId || detail.furnitureId))
       if (furniture) {
-        detail.length = furniture.length
-        detail.width = furniture.width
-        detail.depth = furniture.depth
-        detail.unitPrice = furniture.furnitureTotal
-        detail.price = furniture.furnitureTotal * detail.quantity
+        if ('furnitureId' in updates) {
+          detail.length = furniture.length
+          detail.width = furniture.width
+          detail.depth = furniture.depth
+        }
+        // Recalcular precio basado en dimensiones y maderas actuales
+        const newUnitPrice = calculateDetailPrice(detail, formData.parts)
+        detail.unitPrice = newUnitPrice
+        detail.price = newUnitPrice * detail.quantity
       }
     }
 
     newDetails[index] = detail
-    setFormData({ ...formData, details: newDetails })
+    setFormData({ ...formData, details: mergeDuplicates(newDetails) })
   }
 
 /*
@@ -641,7 +984,10 @@ export function QuotesClient({
   const updatePart = (index: number, updates: Partial<QuotePartInput>) => {
     const newParts = [...formData.parts]
     newParts[index] = { ...newParts[index], ...updates }
-    setFormData({ ...formData, parts: newParts })
+    
+    // Al cambiar la madera de una pieza, recalculamos los precios de los muebles
+    const updatedDetails = recalculatePrices(formData.details, newParts)
+    setFormData({ ...formData, parts: newParts, details: updatedDetails })
   }
 
   const syncParts = () => {
@@ -673,11 +1019,13 @@ export function QuotesClient({
       })
     })
 
-    setFormData(prev => ({ ...prev, parts: newParts }))
+    // Al sincronizar piezas, recalculamos los precios de los muebles
+    const updatedDetails = recalculatePrices(formData.details, newParts)
+    setFormData(prev => ({ ...prev, parts: newParts, details: updatedDetails }))
   }
 
   const syncHardware = () => {
-    const newHardware: QuoteHardwareInput[] = []
+    const newHardwareMap = new Map<string, QuoteHardwareInput>()
     
     formData.details.forEach(detail => {
       const furniture = furnitures.find(f => f.id === detail.furnitureId)
@@ -687,23 +1035,40 @@ export function QuotesClient({
       furniture.extraParts.forEach((ep: any) => {
         if (!ep.extraPart) return
 
-        newHardware.push({
-          hardwareId: ep.extraPart.id,
-          furnitureId: furniture.id,
-          code: ep.extraPart.code || '',
-          quantity: (ep.quantity || 1) * detail.quantity,
-          unitMeasure: 'un',
-          totalPrice: Number(ep.extraPart.price || 0) * (ep.quantity || 1) * detail.quantity
-        })
+        const hwId = ep.extraPart.id.toString()
+        const qty = (ep.quantity || 1) * detail.quantity
+        const unitPrice = Number(ep.extraPart.price || 0)
+        const totalPrice = unitPrice * qty
+
+        if (newHardwareMap.has(hwId)) {
+          const existing = newHardwareMap.get(hwId)!
+          existing.quantity += qty
+          existing.totalPrice = (existing.totalPrice || 0) + totalPrice
+          
+          // If the furniture is different, we set furnitureId to null to indicate multiple
+          if (existing.furnitureId && existing.furnitureId.toString() !== furniture.id.toString()) {
+            existing.furnitureId = null as any
+          }
+        } else {
+          newHardwareMap.set(hwId, {
+            hardwareId: ep.extraPart.id,
+            furnitureId: furniture.id,
+            code: ep.extraPart.code || '',
+            quantity: qty,
+            unitMeasure: 'un',
+            totalPrice: totalPrice
+          })
+        }
       })
     })
 
-    setFormData(prev => ({ ...prev, hardware: newHardware }))
+    setFormData(prev => ({ ...prev, hardware: Array.from(newHardwareMap.values()) }))
   }
 
   const syncFinishes = () => {
-    const newFinishes: QuoteFinishInput[] = []
-    
+    const finishMap = new Map<string, QuoteFinishInput>()
+    const totalFrontSurface = calculateFrontSurface()
+
     formData.details.forEach(detail => {
       const furniture = furnitures.find(f => f.id === detail.furnitureId)
       if (!furniture || !furniture.costs) return
@@ -712,18 +1077,41 @@ export function QuotesClient({
       furniture.costs.forEach((c: any) => {
         if (!c.cost) return
 
-        newFinishes.push({
-          finishId: c.cost.id,
-          furnitureId: furniture.id
-        })
+        const finishId = c.cost.id.toString()
+        const isLaqueado = c.cost.name.toUpperCase().includes('LAQUEA')
+        
+        // Si es laqueado y no hay superficie de frentes, no lo agregamos
+        if (isLaqueado && totalFrontSurface <= 0) return
+
+        const unitPrice = Number(c.cost.price || 0)
+        
+        if (finishMap.has(finishId)) {
+          const existing = finishMap.get(finishId)!
+          if (isLaqueado) {
+            // El laqueado siempre es la superficie total global, no sumamos
+            existing.quantity = totalFrontSurface
+          } else {
+            // Otros acabados sumamos sus cantidades (por defecto 1 por mueble * cantidad de muebles)
+            existing.quantity = Number(existing.quantity || 0) + (Number(c.quantity || 1) * detail.quantity)
+          }
+          existing.totalPrice = Number(existing.quantity) * unitPrice
+        } else {
+          const qty = isLaqueado ? totalFrontSurface : (Number(c.quantity || 1) * detail.quantity)
+          finishMap.set(finishId, {
+            finishId: c.cost.id,
+            furnitureId: furniture.id,
+            quantity: qty,
+            totalPrice: qty * unitPrice
+          })
+        }
       })
     })
 
-    setFormData(prev => ({ ...prev, finishes: newFinishes }))
+    setFormData(prev => ({ ...prev, finishes: Array.from(finishMap.values()) }))
   }
 
   const syncLabor = () => {
-    const newLabor: QuoteLaborInput[] = []
+    const laborMap = new Map<string, QuoteLaborInput>()
     
     formData.details.forEach(detail => {
       const furniture = furnitures.find(f => f.id === detail.furnitureId)
@@ -733,18 +1121,31 @@ export function QuotesClient({
       furniture.laborCosts.forEach((l: any) => {
         if (!l.laborCost) return
 
-        newLabor.push({
-          laborId: l.laborCost.id,
-          furnitureId: furniture.id
-        })
+        const laborId = l.laborCost.id.toString()
+        const laborQty = Number(l.quantity || 1)
+        const totalQty = laborQty * detail.quantity
+        const unitPrice = Number(l.laborCost.price || 0)
+
+        if (laborMap.has(laborId)) {
+          const existing = laborMap.get(laborId)!
+          existing.quantity = Number(existing.quantity || 0) + totalQty
+          existing.totalPrice = Number(existing.quantity) * unitPrice
+        } else {
+          laborMap.set(laborId, {
+            laborId: l.laborCost.id,
+            furnitureId: furniture.id,
+            quantity: totalQty,
+            totalPrice: totalQty * unitPrice
+          })
+        }
       })
     })
 
-    setFormData(prev => ({ ...prev, labor: newLabor }))
+    setFormData(prev => ({ ...prev, labor: Array.from(laborMap.values()) }))
   }
 
   const syncAdditionalCosts = () => {
-    const newAdditionalCosts: QuoteAdditionalCostInput[] = []
+    const acMap = new Map<string, QuoteAdditionalCostInput>()
     
     formData.details.forEach(detail => {
       const furniture = furnitures.find(f => f.id === detail.furnitureId)
@@ -754,61 +1155,189 @@ export function QuotesClient({
       furniture.additionalCosts.forEach((ac: any) => {
         if (!ac.additionalCost) return
 
-        newAdditionalCosts.push({
-          additionalCostId: ac.additionalCost.id,
-          furnitureId: furniture.id
-        })
+        const acId = ac.additionalCost.id.toString()
+        const unitPrice = Number(ac.additionalCost.price || 0)
+        const qty = Number(ac.quantity || 1) * detail.quantity
+
+        if (acMap.has(acId)) {
+          const existing = acMap.get(acId)!
+          existing.quantity = Number(existing.quantity || 0) + qty
+          existing.totalPrice = Number(existing.quantity) * unitPrice
+          if (existing.furnitureId && furniture.id && existing.furnitureId.toString() !== furniture.id.toString()) {
+            existing.furnitureId = null as unknown as string
+          }
+        } else {
+          acMap.set(acId, {
+            additionalCostId: ac.additionalCost.id,
+            furnitureId: furniture.id,
+            quantity: qty,
+            totalPrice: qty * unitPrice
+          })
+        }
       })
     })
 
-    setFormData(prev => ({ ...prev, additionalCosts: newAdditionalCosts }))
+    setFormData(prev => ({ ...prev, additionalCosts: Array.from(acMap.values()) }))
+  }
+
+  const mergeHardware = (hardware: QuoteHardwareInput[]) => {
+    const map = new Map<string, QuoteHardwareInput>()
+    hardware.forEach(h => {
+      const key = h.hardwareId?.toString() || '0'
+      if (map.has(key)) {
+        const existing = map.get(key)!
+        existing.quantity = Number(existing.quantity || 0) + Number(h.quantity || 0)
+        existing.totalPrice = Number(existing.quantity) * (Number(existing.totalPrice) / (Number(existing.quantity) - Number(h.quantity)))
+        // Si el mueble es distinto, ponemos null
+        if (existing.furnitureId && h.furnitureId && existing.furnitureId.toString() !== h.furnitureId.toString()) {
+          existing.furnitureId = null as unknown as string
+        }
+      } else {
+        map.set(key, { ...h })
+      }
+    })
+    return Array.from(map.values())
+  }
+
+  const mergeFinishes = (finishes: QuoteFinishInput[]) => {
+    const map = new Map<string, QuoteFinishInput>()
+    const totalFrontSurface = calculateFrontSurface()
+    
+    finishes.forEach(f => {
+      const key = f.finishId?.toString() || '0'
+      const finishData = costs.find(c => c.id.toString() === key)
+      const isLaqueado = finishData?.name.toUpperCase().includes('LAQUEA')
+      
+      if (map.has(key)) {
+        const existing = map.get(key)!
+        if (isLaqueado) {
+          existing.quantity = totalFrontSurface
+        } else {
+          existing.quantity = Number(existing.quantity || 0) + Number(f.quantity || 0)
+        }
+        existing.totalPrice = Number(existing.quantity) * Number(finishData?.price || 0)
+        if (existing.furnitureId && f.furnitureId && existing.furnitureId.toString() !== f.furnitureId.toString()) {
+          existing.furnitureId = null as unknown as string
+        }
+      } else {
+        map.set(key, { ...f })
+      }
+    })
+    return Array.from(map.values())
+  }
+
+  const mergeLabor = (labor: QuoteLaborInput[]) => {
+    const map = new Map<string, QuoteLaborInput>()
+    labor.forEach(l => {
+      const key = l.laborId?.toString() || '0'
+      const laborData = laborCosts.find(lc => lc.id.toString() === key)
+      
+      if (map.has(key)) {
+        const existing = map.get(key)!
+        existing.quantity = Number(existing.quantity || 0) + Number(l.quantity || 0)
+        existing.totalPrice = Number(existing.quantity) * Number(laborData?.price || 0)
+        if (existing.furnitureId && l.furnitureId && existing.furnitureId.toString() !== l.furnitureId.toString()) {
+          existing.furnitureId = null as unknown as string
+        }
+      } else {
+        map.set(key, { ...l })
+      }
+    })
+    return Array.from(map.values())
+  }
+
+  const mergeAdditionalCosts = (costs: QuoteAdditionalCostInput[]) => {
+    const map = new Map<string, QuoteAdditionalCostInput>()
+    costs.forEach(c => {
+      const key = c.additionalCostId?.toString() || '0'
+      const acData = additionalCosts.find(ac => ac.id.toString() === key)
+      
+      if (map.has(key)) {
+        const existing = map.get(key)!
+        existing.quantity = Number(existing.quantity || 0) + Number(c.quantity || 0)
+        existing.totalPrice = Number(existing.quantity) * Number(acData?.price || 0)
+        if (existing.furnitureId && c.furnitureId && existing.furnitureId.toString() !== c.furnitureId.toString()) {
+          existing.furnitureId = null as unknown as string
+        }
+      } else {
+        map.set(key, { ...c })
+      }
+    })
+    return Array.from(map.values())
   }
 
   const addHardware = () => {
     const defaultHW = extraParts[0]
+    const newHW: QuoteHardwareInput = { 
+      hardwareId: defaultHW?.id || 0, 
+      furnitureId: formData.details[0]?.furnitureId || 0,
+      code: defaultHW?.code || '',
+      quantity: 1,
+      unitMeasure: 'un',
+      totalPrice: Number(defaultHW?.price || 0)
+    }
     setFormData(prev => ({
       ...prev,
-      hardware: [
-        ...prev.hardware,
-        { 
-          hardwareId: defaultHW?.id || 0, 
-          furnitureId: prev.details[0]?.furnitureId || 0,
-          code: defaultHW?.code || '',
-          quantity: 1,
-          unitMeasure: 'un',
-          totalPrice: Number(defaultHW?.price || 0)
-        }
-      ]
+      hardware: mergeHardware([...prev.hardware, newHW])
     }))
   }
 
   const addFinish = () => {
+    const frontSurface = calculateFrontSurface()
+    let defaultFinish = costs[0]
+    
+    if (defaultFinish?.name.toUpperCase().includes('LAQUEA') && frontSurface <= 0) {
+      const alternative = costs.find(c => !c.name.toUpperCase().includes('LAQUEA'))
+      if (!alternative) {
+        alert('No se pueden agregar acabados de laqueado porque no hay piezas marcadas como "Frente".')
+        return
+      }
+      defaultFinish = alternative
+    }
+
+    const price = defaultFinish ? Number(defaultFinish.price) : 0
+    const qty = defaultFinish?.name.toUpperCase().includes('LAQUEA') ? frontSurface : 1
+    
+    const newFinish: QuoteFinishInput = { 
+      finishId: defaultFinish?.id || 0, 
+      furnitureId: formData.details[0]?.furnitureId || 0,
+      quantity: qty,
+      totalPrice: qty * price
+    }
+    
     setFormData(prev => ({
       ...prev,
-      finishes: [
-        ...prev.finishes,
-        { finishId: costs[0]?.id || 0, furnitureId: formData.details[0]?.furnitureId || 0 }
-      ]
+      finishes: mergeFinishes([...prev.finishes, newFinish])
     }))
   }
 
   const addLabor = () => {
+    const defaultLabor = laborCosts[0]
+    const price = defaultLabor ? Number(defaultLabor.price) : 0
+    const newLaborItem: QuoteLaborInput = { 
+      laborId: defaultLabor?.id || 0, 
+      furnitureId: formData.details[0]?.furnitureId || 0,
+      quantity: 1,
+      totalPrice: price
+    }
     setFormData(prev => ({
       ...prev,
-      labor: [
-        ...prev.labor,
-        { laborId: laborCosts[0]?.id || 0, furnitureId: formData.details[0]?.furnitureId || 0 }
-      ]
+      labor: mergeLabor([...prev.labor, newLaborItem])
     }))
   }
 
   const addAdditionalCost = () => {
+    const defaultAC = additionalCosts[0]
+    const price = defaultAC ? Number(defaultAC.price) : 0
+    const newAC: QuoteAdditionalCostInput = { 
+      additionalCostId: defaultAC?.id || 0, 
+      furnitureId: formData.details[0]?.furnitureId || 0,
+      quantity: 1,
+      totalPrice: price
+    }
     setFormData(prev => ({
       ...prev,
-      additionalCosts: [
-        ...prev.additionalCosts,
-        { additionalCostId: additionalCosts[0]?.id || 0, furnitureId: formData.details[0]?.furnitureId || 0 }
-      ]
+      additionalCosts: mergeAdditionalCosts([...prev.additionalCosts, newAC])
     }))
   }
 
@@ -840,11 +1369,35 @@ export function QuotesClient({
     }))
   }
 
-  const updateHardware = (index: number, updates: Partial<QuoteHardware>) => {
+  const updateFinish = (index: number, updates: Partial<QuoteFinishInput>) => {
+    setFormData(prev => {
+      const newFinishes = [...prev.finishes]
+      newFinishes[index] = { ...newFinishes[index], ...updates }
+      return { ...prev, finishes: mergeFinishes(newFinishes) }
+    })
+  }
+
+  const updateLabor = (index: number, updates: Partial<QuoteLaborInput>) => {
+    setFormData(prev => {
+      const newLabor = [...prev.labor]
+      newLabor[index] = { ...newLabor[index], ...updates }
+      return { ...prev, labor: mergeLabor(newLabor) }
+    })
+  }
+
+  const updateAdditionalCost = (index: number, updates: Partial<QuoteAdditionalCostInput>) => {
+    setFormData(prev => {
+      const newAdditionalCosts = [...prev.additionalCosts]
+      newAdditionalCosts[index] = { ...newAdditionalCosts[index], ...updates }
+      return { ...prev, additionalCosts: mergeAdditionalCosts(newAdditionalCosts) }
+    })
+  }
+
+  const updateHardware = (index: number, updates: Partial<QuoteHardwareInput>) => {
     setFormData(prev => {
       const newHardware = [...prev.hardware]
       newHardware[index] = { ...newHardware[index], ...updates }
-      return { ...prev, hardware: newHardware }
+      return { ...prev, hardware: mergeHardware(newHardware) }
     })
   }
 
@@ -858,25 +1411,43 @@ export function QuotesClient({
   }
 
   const updateFinishId = (index: number, finishId: string | number) => {
+    const finishData = costs.find(c => c.id === finishId)
+    const isLaqueado = finishData?.name.toUpperCase().includes('LAQUEA')
+    const frontSurface = calculateFrontSurface()
+    
+    if (isLaqueado && frontSurface <= 0) {
+      alert('No se puede agregar un acabado de laqueado porque no hay piezas marcadas como "Frente" en los muebles.')
+      return
+    }
+
+    const unitPrice = finishData ? Number(finishData.price) : 0
+    const qty = isLaqueado ? frontSurface : (formData.finishes[index]?.quantity || 1)
+    
     setFormData(prev => {
       const newFinishes = [...prev.finishes]
-      newFinishes[index] = { ...newFinishes[index], finishId }
-      return { ...prev, finishes: newFinishes }
+      newFinishes[index] = { ...newFinishes[index], finishId, quantity: qty, totalPrice: unitPrice * qty }
+      return { ...prev, finishes: mergeFinishes(newFinishes) }
     })
   }
 
   const updateLaborId = (index: number, laborId: string | number) => {
+    const laborData = laborCosts.find(lc => lc.id === laborId)
+    const unitPrice = laborData ? Number(laborData.price) : 0
+    const qty = formData.labor[index]?.quantity || 1
     setFormData(prev => {
       const newLabor = [...prev.labor]
-      newLabor[index] = { ...newLabor[index], laborId }
-      return { ...prev, labor: newLabor }
+      newLabor[index] = { ...newLabor[index], laborId, quantity: qty, totalPrice: unitPrice * qty }
+      return { ...prev, labor: mergeLabor(newLabor) }
     })
   }
 
   const updateAdditionalCostId = (index: number, additionalCostId: string | number) => {
+    const data = additionalCosts.find(ac => ac.id === additionalCostId)
+    const unitPrice = data ? Number(data.price) : 0
+    const qty = formData.additionalCosts[index]?.quantity || 1
     setFormData(prev => {
       const newAdditionalCosts = [...prev.additionalCosts]
-      newAdditionalCosts[index] = { ...newAdditionalCosts[index], additionalCostId }
+      newAdditionalCosts[index] = { ...newAdditionalCosts[index], additionalCostId, totalPrice: unitPrice * qty }
       return { ...prev, additionalCosts: newAdditionalCosts }
     })
   }
@@ -901,10 +1472,10 @@ export function QuotesClient({
     }
   }
 
-  const formatCurrency = (amount: number) => {
+  const formatCurrency = (amount: number, currency = 'ARS') => {
     return amount.toLocaleString('es-AR', {
       style: 'currency',
-      currency: 'ARS',
+      currency: currency,
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     })
@@ -1058,22 +1629,26 @@ export function QuotesClient({
                   <div className="grid grid-cols-4 gap-4 pt-4 border-t">
                     <div className="space-y-2">
                       <Label className="text-xs font-bold text-muted-foreground uppercase">Costo ARS</Label>
-                      <Input type="number" step="0.01" className="h-9" value={formData.costPesos} readOnly />
+                      <div className="h-9 w-full rounded-md border border-input bg-muted/30 px-3 py-2 text-sm font-semibold flex items-center">
+                        {formatCurrency(formData.costPesos)}
+                      </div>
                     </div>
                     <div className="space-y-2">
                       <Label className="text-xs font-bold text-muted-foreground uppercase">Precio ARS</Label>
-                      <Input type="number" step="0.01" className="h-9" value={formData.pricePesos} readOnly />
+                      <div className="h-9 w-full rounded-md border border-input bg-muted/30 px-3 py-2 text-sm font-semibold flex items-center">
+                        {formatCurrency(formData.pricePesos)}
+                      </div>
                     </div>
                     <div className="space-y-2">
                       <Label className="text-xs font-bold text-muted-foreground uppercase text-green-600">Costo USD</Label>
                       <div className="h-9 w-full rounded-md border border-input bg-muted/30 px-3 py-2 text-sm text-green-600 font-semibold flex items-center">
-                        {formatCurrency(formData.costDollars)}
+                        {formatCurrency(formData.costDollars, 'USD')}
                       </div>
                     </div>
                     <div className="space-y-2">
                       <Label className="text-xs font-bold text-primary uppercase">Precio USD</Label>
                       <div className="h-9 w-full rounded-md border border-primary/20 bg-primary/5 px-3 py-2 text-sm text-primary font-bold flex items-center shadow-sm">
-                        {formatCurrency(formData.priceDollars)}
+                        {formatCurrency(formData.priceDollars, 'USD')}
                       </div>
                     </div>
                   </div>
@@ -1106,7 +1681,7 @@ export function QuotesClient({
                           <TableHead className="w-20">Cant.</TableHead>
                           <TableHead>Medidas (mm)</TableHead>
                           <TableHead>Precio Unit.</TableHead>
-                          <TableHead>Subtotal</TableHead>
+                          <TableHead>Total</TableHead>
                           <TableHead className="w-10"></TableHead>
                         </TableRow>
                       </TableHeader>
@@ -1180,37 +1755,55 @@ export function QuotesClient({
                         <TableRow>
                           <TableHead>Pieza</TableHead>
                           <TableHead>Mueble Relacionado</TableHead>
+                          <TableHead className="text-center">Medidas (LxA)</TableHead>
                           <TableHead>Madera</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {formData.parts.map((part, idx) => (
-                          <TableRow key={idx}>
-                            <TableCell className="text-sm font-medium">
-                              {partsList.find(p => p.id === part.partId)?.name || 'Pieza desconocida'}
-                            </TableCell>
-                            <TableCell className="text-sm text-muted-foreground">
-                              {(() => {
-                                const f = furnitures.find(f => f.id === part.furnitureId);
-                                return f ? `[${f.code}] ${f.name}` : 'Mueble desconocido';
-                              })()}
-                            </TableCell>
-                            <TableCell>
-                              <select 
-                                className="w-full bg-transparent border-none focus:ring-0 text-sm"
-                                value={part.woodId} 
-                                onChange={e => updatePart(idx, { woodId: e.target.value })}
-                              >
-                                <option value="" disabled>Seleccione una madera...</option>
-                                {woods.map(w => (
-                                  <option key={w.id} value={w.id}>
-                                    {w.name}
-                                  </option>
-                                ))}
-                              </select>
-                            </TableCell>
-                          </TableRow>
-                        ))}
+                        {formData.parts.map((part, idx) => {
+                          const partDef = partsList.find(p => p.id.toString() === part.partId?.toString())
+                          const furniture = furnitures.find(f => f.id.toString() === part.furnitureId?.toString())
+                          const wood = woods.find(w => w.id.toString() === part.woodId?.toString()) || defaultWood
+                          const thickness = wood ? Number(wood.thickness) : 18
+
+                          const context = furniture ? {
+                            L: Number(furniture.length),
+                            A: Number(furniture.width),
+                            P: Number(furniture.depth),
+                            E: thickness
+                          } : { L: 0, A: 0, P: 0, E: 0 }
+
+                          const length = partDef ? evaluateFormula(partDef.formulaLength, context) : 0
+                          const width = partDef ? evaluateFormula(partDef.formulaWidth, context) : 0
+
+                          return (
+                            <TableRow key={idx}>
+                              <TableCell className="text-sm font-medium">
+                                {partDef?.name || 'Pieza desconocida'}
+                              </TableCell>
+                              <TableCell className="text-sm text-muted-foreground">
+                                {furniture ? `[${furniture.code}] ${furniture.name}` : 'Mueble desconocido'}
+                              </TableCell>
+                              <TableCell className="text-center font-mono text-xs">
+                                {length} x {width}
+                              </TableCell>
+                              <TableCell>
+                                <select 
+                                  className="w-full bg-transparent border-none focus:ring-0 text-sm"
+                                  value={part.woodId} 
+                                  onChange={e => updatePart(idx, { woodId: e.target.value })}
+                                >
+                                  <option value="" disabled>Seleccione una madera...</option>
+                                  {woods.map(w => (
+                                    <option key={w.id} value={w.id}>
+                                      {w.name}
+                                    </option>
+                                  ))}
+                                </select>
+                              </TableCell>
+                            </TableRow>
+                          )
+                        })}
                         {formData.parts.length === 0 && (
                           <TableRow>
                             <TableCell colSpan={4} className="text-center py-8 text-muted-foreground text-sm italic">
@@ -1318,7 +1911,7 @@ export function QuotesClient({
                                 </select>
                               </TableCell>
                               <TableCell className="text-sm text-muted-foreground">
-                                {furniture ? `[${furniture.code}] ${furniture.name}` : 'Manual / Sin mueble'}
+                                {furniture ? `[${furniture.code}] ${furniture.name}` : hw.hardwareId ? 'Varios Muebles / Resumen' : 'Manual / Sin mueble'}
                               </TableCell>
                               <TableCell>
                                 <Input 
@@ -1380,9 +1973,6 @@ export function QuotesClient({
                       <Button type="button" variant="outline" size="sm" onClick={addFinish}>
                         <Plus className="h-4 w-4 mr-2" /> Agregar Acabado
                       </Button>
-                      <Button type="button" variant="outline" size="sm" onClick={syncFinishes}>
-                        <ArrowUpDown className="h-4 w-4 mr-2" /> Sincronizar desde Muebles
-                      </Button>
                     </div>
                   </div>
                   <div className="border rounded-md overflow-hidden">
@@ -1391,7 +1981,9 @@ export function QuotesClient({
                         <TableRow>
                           <TableHead>Acabado</TableHead>
                           <TableHead>Mueble Relacionado</TableHead>
+                          <TableHead className="w-20 text-center">Cant.</TableHead>
                           <TableHead className="w-24 text-right">Precio Unit.</TableHead>
+                          <TableHead className="w-24 text-right">Precio Total</TableHead>
                           <TableHead className="w-10"></TableHead>
                         </TableRow>
                       </TableHeader>
@@ -1418,8 +2010,25 @@ export function QuotesClient({
                               <TableCell className="text-sm text-muted-foreground">
                                 {furniture ? `[${furniture.code}] ${furniture.name}` : 'Manual / Sin mueble'}
                               </TableCell>
+                              <TableCell>
+                                <Input 
+                                  type="number" 
+                                  step="0.001"
+                                  className="h-8 text-center" 
+                                  value={f.quantity || 1} 
+                                  disabled={finishData?.name.toUpperCase().includes('LAQUEA')}
+                                  onChange={e => {
+                                    const qty = parseFloat(e.target.value) || 0
+                                    const unitPrice = finishData ? Number(finishData.price) : 0
+                                    updateFinish(idx, { quantity: qty, totalPrice: qty * unitPrice })
+                                  }} 
+                                />
+                              </TableCell>
                               <TableCell className="text-sm text-right font-mono">
                                 {finishData ? formatCurrency(Number(finishData.price)) : '-'}
+                              </TableCell>
+                              <TableCell className="text-sm text-right font-bold text-primary">
+                                {formatCurrency(f.totalPrice ?? 0)}
                               </TableCell>
                               <TableCell>
                                 <Button
@@ -1467,7 +2076,9 @@ export function QuotesClient({
                         <TableRow>
                           <TableHead>Concepto Mano de Obra</TableHead>
                           <TableHead>Mueble Relacionado</TableHead>
+                          <TableHead className="w-20 text-center">Cant.</TableHead>
                           <TableHead className="w-24 text-right">Precio Unit.</TableHead>
+                          <TableHead className="w-24 text-right">Precio Total</TableHead>
                           <TableHead className="w-10"></TableHead>
                         </TableRow>
                       </TableHeader>
@@ -1494,8 +2105,28 @@ export function QuotesClient({
                               <TableCell className="text-sm text-muted-foreground">
                                 {furniture ? `[${furniture.code}] ${furniture.name}` : 'Manual / Sin mueble'}
                               </TableCell>
+                              <TableCell>
+                                <Input 
+                                  type="number" 
+                                  step="0.01"
+                                  className="h-8 text-center" 
+                                  value={l.quantity || 1} 
+                                  disabled={(() => {
+                                    const name = laborData?.name.toUpperCase() || ''
+                                    return name.includes('FILO') || name.includes('PEGADO') || name.includes('CORTE')
+                                  })()}
+                                  onChange={e => {
+                                    const qty = parseFloat(e.target.value) || 0
+                                    const unitPrice = laborData ? Number(laborData.price) : 0
+                                    updateLabor(idx, { quantity: qty, totalPrice: qty * unitPrice })
+                                  }} 
+                                />
+                              </TableCell>
                               <TableCell className="text-sm text-right font-mono">
                                 {laborData ? formatCurrency(Number(laborData.price)) : '-'}
+                              </TableCell>
+                              <TableCell className="text-sm text-right font-bold text-primary">
+                                {formatCurrency(l.totalPrice ?? 0)}
                               </TableCell>
                               <TableCell>
                                 <Button
@@ -1543,7 +2174,9 @@ export function QuotesClient({
                         <TableRow>
                           <TableHead>Concepto</TableHead>
                           <TableHead>Mueble Relacionado</TableHead>
+                          <TableHead className="w-20 text-center">Cant.</TableHead>
                           <TableHead className="w-24 text-right">Precio Unit.</TableHead>
+                          <TableHead className="w-24 text-right">Precio Total</TableHead>
                           <TableHead className="w-10"></TableHead>
                         </TableRow>
                       </TableHeader>
@@ -1570,8 +2203,24 @@ export function QuotesClient({
                               <TableCell className="text-sm text-muted-foreground">
                                 {furniture ? `[${furniture.code}] ${furniture.name}` : 'Manual / Sin mueble'}
                               </TableCell>
+                              <TableCell>
+                                <Input 
+                                  type="number" 
+                                  step="0.01"
+                                  className="h-8 text-center" 
+                                  value={c.quantity || 1} 
+                                  onChange={e => {
+                                    const qty = parseFloat(e.target.value) || 0
+                                    const unitPrice = data ? Number(data.price) : 0
+                                    updateAdditionalCost(idx, { quantity: qty, totalPrice: qty * unitPrice })
+                                  }} 
+                                />
+                              </TableCell>
                               <TableCell className="text-sm text-right font-mono">
                                 {data ? formatCurrency(Number(data.price)) : '-'}
+                              </TableCell>
+                              <TableCell className="text-sm text-right font-bold text-primary">
+                                {formatCurrency(c.totalPrice ?? 0)}
                               </TableCell>
                               <TableCell>
                                 <Button
@@ -1675,14 +2324,34 @@ export function QuotesClient({
                           size="icon"
                           onClick={() => handleEdit(quote)}
                           className="h-8 w-8 text-primary hover:bg-primary/10"
+                          title="Editar"
                         >
                           <Pencil className="h-4 w-4" />
                         </Button>
                         <Button
                           variant="ghost"
                           size="icon"
+                          onClick={() => generatePDF(quote)}
+                          className="h-8 w-8 text-orange-600 hover:bg-orange-50"
+                          title="Generar PDF"
+                        >
+                          <FileText className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDuplicate(quote.id)}
+                          className="h-8 w-8 text-blue-600 hover:bg-blue-50"
+                          title="Duplicar"
+                        >
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
                           onClick={() => handleDelete(quote.id)}
                           className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                          title="Eliminar"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>

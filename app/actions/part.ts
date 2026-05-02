@@ -24,7 +24,7 @@ export async function getParts() {
     })
     return parts.map(part => ({
       ...part,
-      id: part.id.toString()
+      id: part.id.toString(),
     }))
   } catch (error) {
     console.error('Error fetching parts:', error)
@@ -42,7 +42,7 @@ export async function createPart(data: PartInput) {
     revalidatePath('/parts')
     return {
       ...part,
-      id: part.id.toString()
+      id: part.id.toString(),
     }
   } catch (error) {
     console.error('Error creating part:', error)
@@ -61,7 +61,7 @@ export async function updatePart(id: number | string, data: PartInput) {
     revalidatePath('/parts')
     return {
       ...part,
-      id: part.id.toString()
+      id: part.id.toString(),
     }
   } catch (error) {
     console.error('Error updating part:', error)

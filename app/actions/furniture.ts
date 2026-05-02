@@ -75,6 +75,12 @@ function serializeFurniture(item: any) {
       idFurniture: p.idFurniture.toString(),
       idPart: p.idPart.toString(),
       edgeSize: p.edgeSize ? Number(p.edgeSize) : null,
+      part: p.part ? {
+        ...p.part,
+        id: p.part.id.toString(),
+        price: Number(p.part.price),
+        surfaceArea: Number(p.part.surfaceArea),
+      } : undefined
     })),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     extraParts: item.extraParts?.map((ep: any) => ({
@@ -82,27 +88,48 @@ function serializeFurniture(item: any) {
       id: ep.id.toString(),
       idFurniture: ep.idFurniture.toString(),
       idPartExtra: ep.idPartExtra.toString(),
+      extraPart: ep.extraPart ? {
+        ...ep.extraPart,
+        id: ep.extraPart.id.toString(),
+        price: Number(ep.extraPart.price),
+        totalPrice: Number(ep.extraPart.totalPrice || 0),
+      } : undefined
     })),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     costs: item.costs?.map((c: any) => ({
-      ...c,
       id: c.id.toString(),
       idFurniture: c.idFurniture.toString(),
       idCost: c.idCost.toString(),
+      quantity: Number(c.quantity),
+      cost: c.cost ? {
+        id: c.cost.id.toString(),
+        name: c.cost.name,
+        price: Number(c.cost.price),
+      } : undefined
     })),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     laborCosts: item.laborCosts?.map((l: any) => ({
-      ...l,
       id: l.id.toString(),
       idFurniture: l.idFurniture.toString(),
       idLaborCost: l.idLaborCost.toString(),
+      quantity: Number(l.quantity),
+      laborCost: l.laborCost ? {
+        id: l.laborCost.id.toString(),
+        name: l.laborCost.name,
+        price: Number(l.laborCost.price),
+      } : undefined
     })),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     additionalCosts: item.additionalCosts?.map((a: any) => ({
-      ...a,
       id: a.id.toString(),
       idFurniture: a.idFurniture.toString(),
       idAdditionalCosts: a.idAdditionalCosts.toString(),
+      quantity: Number(a.quantity),
+      additionalCost: a.additionalCost ? {
+        id: a.additionalCost.id.toString(),
+        name: a.additionalCost.name,
+        price: Number(a.additionalCost.price),
+      } : undefined
     })),
   }
 }
@@ -285,6 +312,88 @@ export async function deleteFurniture(id: number | string) {
     return { success: true }
   } catch (error) {
     console.error('Error deleting furniture:', error)
+    throw error
+  }
+}
+export async function duplicateFurniture(id: string | number) {
+  try {
+    const original = await prisma.furniture.findUnique({
+      where: { id: BigInt(id) },
+      include: {
+        parts: true,
+        extraParts: true,
+        costs: true,
+        laborCosts: true,
+        additionalCosts: true,
+      }
+    })
+
+    if (!original) throw new Error('Mueble no encontrado')
+
+    const duplicated = await prisma.furniture.create({
+      data: {
+        name: `${original.name} (Copia)`,
+        code: `${original.code}C`,
+        length: original.length,
+        width: original.width,
+        depth: original.depth,
+        furniturePrice: original.furniturePrice,
+        hardwarePrice: original.hardwarePrice,
+        costPrice: original.costPrice,
+        laborPrice: original.laborPrice,
+        additionalPrice: original.additionalPrice,
+        furnitureTotal: original.furnitureTotal,
+        image: original.image,
+        parts: {
+          create: original.parts.map(p => ({
+            idPart: p.idPart,
+            quantity: p.quantity,
+            edges1: p.edges1,
+            edges2: p.edges2,
+            edges3: p.edges3,
+            edges4: p.edges4,
+            edgeSize: p.edgeSize,
+            orientation: p.orientation,
+          }))
+        },
+        extraParts: {
+          create: original.extraParts.map(ep => ({
+            idPartExtra: ep.idPartExtra,
+            quantity: ep.quantity,
+          }))
+        },
+        costs: {
+          create: original.costs.map(c => ({
+            idCost: c.idCost,
+            quantity: c.quantity,
+          }))
+        },
+        laborCosts: {
+          create: original.laborCosts.map(l => ({
+            idLaborCost: l.idLaborCost,
+            quantity: l.quantity,
+          }))
+        },
+        additionalCosts: {
+          create: original.additionalCosts.map(ac => ({
+            idAdditionalCosts: ac.idAdditionalCosts,
+            quantity: ac.quantity,
+          }))
+        }
+      },
+      include: {
+        parts: { include: { part: true } },
+        extraParts: { include: { extraPart: true } },
+        costs: { include: { cost: true } },
+        laborCosts: { include: { laborCost: true } },
+        additionalCosts: { include: { additionalCost: true } },
+      }
+    })
+
+    revalidatePath('/furniture')
+    return serializeFurniture(duplicated)
+  } catch (error) {
+    console.error('Error duplicating furniture:', error)
     throw error
   }
 }

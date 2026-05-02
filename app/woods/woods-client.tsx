@@ -321,7 +321,7 @@ export function WoodsClient({ initialWoods }: WoodsClientProps) {
                       setFormData(prev => ({
                         ...prev,
                         length: val,
-                        surfaceArea: (val || 0) * (prev.width || 0)
+                        surfaceArea: ((val || 0) * (prev.width || 0)) / 1000
                       }))
                     }}
                   />
@@ -337,7 +337,7 @@ export function WoodsClient({ initialWoods }: WoodsClientProps) {
                       setFormData(prev => ({
                         ...prev,
                         width: val,
-                        surfaceArea: (prev.length || 0) * (val || 0)
+                        surfaceArea: ((prev.length || 0) * (val || 0)) / 1000
                       }))
                     }}
                   />
@@ -346,7 +346,7 @@ export function WoodsClient({ initialWoods }: WoodsClientProps) {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="surfaceArea">Superficie (mm²)</Label>
+                  <Label htmlFor="surfaceArea">Superficie (mm)</Label>
                   <Input
                     id="surfaceArea"
                     type="number"
@@ -460,7 +460,7 @@ export function WoodsClient({ initialWoods }: WoodsClientProps) {
                 <div className="flex items-center justify-end">Precio <SortIcon columnKey="price" sortConfig={sortConfig} /></div>
               </TableHead>
               <TableHead className="cursor-pointer hover:text-primary transition-colors font-bold text-right w-28" onClick={() => requestSort('surfaceArea')}>
-                <div className="flex items-center justify-end">Superficie <SortIcon columnKey="surfaceArea" sortConfig={sortConfig} /></div>
+                <div className="flex items-center justify-end">Superficie (mm) <SortIcon columnKey="surfaceArea" sortConfig={sortConfig} /></div>
               </TableHead>
               <TableHead className="cursor-pointer hover:text-primary transition-colors font-bold w-24" onClick={() => requestSort('isDefaultWood')}>
                 <div className="flex items-center justify-center">Default<SortIcon columnKey="isDefaultWood" sortConfig={sortConfig} /></div>
@@ -495,7 +495,7 @@ export function WoodsClient({ initialWoods }: WoodsClientProps) {
                     $ {wood.price.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                   </TableCell>
                   <TableCell className="text-right py-2 whitespace-nowrap">
-                    {wood.surfaceArea.toLocaleString('es-AR')} mm²
+                    {wood.surfaceArea.toLocaleString('es-AR')} mm
                   </TableCell>
                   <TableCell className="text-center py-2 whitespace-nowrap">
                     {wood.isDefaultWood && <span className="ml-1 text-[9px] bg-amber-100 text-amber-700 px-1 py-0.5 rounded-full uppercase font-bold">Default</span>}

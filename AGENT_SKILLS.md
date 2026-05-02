@@ -105,8 +105,25 @@
 - **Data Integrity:** Uses Prisma transactions to ensure atomicity when updating a quote and its related details.
 - **Status Management:** Includes color-coded status badges (Pendiente, Aprobado, Rechazado, Finalizado).
 - **Client Relationship:** Links each quote to a specific client, displaying the client name in the main table.
-- **UI Consistency:** The Quotes module follows the exact design pattern of the Furniture module, using custom button-based tabs, unified grid layouts, and consistent table styling for a cohesive user experience.
+- **UI Consistency:** The Quotes module follows the exact design pattern of the Furniture module, using custom button-based tabs, unified grid layouts, and consistent table styling. In the items tab, the "Total" column represents the multiplication of quantity and unit price.
 - **Responsive Table:** Includes horizontal scrolling for mobile usability.
+- **Surface Calculation (Laqueado):** Automatically calculates the total front surface area (m²) of all furniture pieces marked as `isFront`.
+- **Intelligent Item Merging:** The system automatically groups identical furniture and service items (hardware, finishes, labor, extra costs) into a single row. It sums quantities and updates subtotals, preventing redundant entries in the budget.
+- **Duplication Action:** Implements a one-click duplication feature for quotes, cloning the entire configuration (furniture, parts, hardware, etc.) into a new record with the suffix "(Copia)".
+- **Flexible Data Schema:** The database schema allows `furnitureId` to be optional in detail tables, supporting "global" or grouped items that aren't tied to a specific furniture piece.
+- **Robust Serialization:** Server actions explicitly convert all `Decimal` and `BigInt` values to `Number` and `String`, respectively, avoiding spread operators to ensure clean objects for Next.js Client Components.
+- **Full 8-Page PDF Presentation:** Implements a comprehensive 8-page PDF generator using `jspdf` and `jspdf-autotable`. The document mimics the "Strongwood" corporate presentation, including:
+  - **Cover Page:** Sage green background with brand logo and project title.
+  - **Institutional Content:** "Who We Are" and "How We Work" sections.
+  - **Dynamic Budget (Page 4):** Lists furniture items, current date, and a consolidated "Logística, traslado e instalación" line that sums hardware, finishes, and labor costs.
+  - **Technical Annex:** Dynamically lists the names of all wood types used in the project.
+  - **Complementary Services:** Automatically lists additional costs/extras.
+  - **Legal & Branding:** Includes materials, brand logos, conditions, and contact info.
+- **Standardized Currency Formatting:** All monetary values (Costo/Precio ARS and USD) are displayed using the Argentine locale (`es-AR`), which uses dots for thousands and commas for decimals (e.g., `2.119.578,34`). This formatting is applied consistently across the dashboard, forms, and PDF exports.
+- **Dynamic Furniture Pricing:** The unit price of each furniture item in the budget is calculated dynamically. If the user changes the wood assigned to a piece in the "Piezas" tab, or modifies the furniture dimensions, the unit price in the "Muebles" tab is automatically recalculated to reflect the new material costs while maintaining fixed costs (hardware, labor, etc.).
+- **Locked Calculated Fields:** Calculated fields in the quote form (like laqueado quantity) are read-only to maintain calculation integrity.
+- **Costo ARS Calculation:** The total cost (Costo ARS) is automatically calculated by summing the total prices of all items across the following tabs: Muebles (Furniture), Herrajes (Hardware), Acabados (Finishes), Mano de Obra (Labor), and Costos Extras (Additional Costs). This ensures that all components and services are reflected in the base cost before applying profit.
+- **Real-time Piece Dimensions:** The Pieces tab in the quote form displays the calculated dimensions for each piece in a unified "Medidas (LxA)" column (Longitud x Ancho), evaluating formulas dynamically based on the associated furniture's dimensions and assigned wood thickness.
 
 ## 8. Development Roadmap
 - [x] Woods CRUD
