@@ -99,7 +99,7 @@ export async function recalculateAllFurniturePrices() {
         // Precio de mano de obra
         const laborPrice = furniture.laborCosts.reduce((acc, l) => {
           if (!l.laborCost) return acc
-          return acc + Number(l.laborCost.price) * l.quantity
+          return acc + Number(l.laborCost.price) * Number(l.quantity)
         }, 0)
 
         // Precio de extras
