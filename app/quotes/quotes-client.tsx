@@ -679,24 +679,36 @@ export function QuotesClient({
     }
 
     // --- PÁGINA 1: PORTADA ---
-    doc.setFillColor(sageGreen[0], sageGreen[1], sageGreen[2])
+    const customSage = [98, 117, 102]
+    doc.setFillColor(customSage[0], customSage[1], customSage[2])
     doc.rect(0, 0, pageWidth, pageHeight, 'F')
+    
+    // Logo (3 cuadrados) - Top Left (Más grandes y pegados al borde)
     doc.setFillColor(0, 0, 0)
-    doc.rect(40, 40, 30, 30, 'F')
-    doc.rect(72, 40, 30, 30, 'F')
-    doc.rect(40, 72, 30, 30, 'F')
-    doc.setFontSize(14)
+    const sqSize = 25
+    const sqGap = 3
+    doc.rect(15, 15, sqSize, sqSize, 'F')
+    doc.rect(15 + sqSize + sqGap, 15, sqSize, sqSize, 'F')
+    doc.rect(15, 15 + sqSize + sqGap, sqSize, sqSize, 'F')
+    
+    // Motto - Top Right (Con espaciado)
+    doc.setFontSize(9)
     doc.setFont('helvetica', 'normal')
     doc.setTextColor(0, 0, 0)
-    doc.text('DISEÑAMOS Y EJECUTAMOS', pageWidth - 40, 55, { align: 'right' })
-    doc.text('PROYECTOS INTEGRALES', pageWidth - 40, 62, { align: 'right' })
-    doc.text('DE MUEBLES A MEDIDA', pageWidth - 40, 69, { align: 'right' })
-    doc.setFontSize(35)
-    doc.text('/PRESUPUESTO', pageWidth - 40, 160, { align: 'right' })
-    doc.text('2026', pageWidth - 40, 175, { align: 'right' })
-    doc.setFontSize(70)
+    doc.text('DISEÑAMOS  Y  EJECUTAMOS', pageWidth - 15, 20, { align: 'right' })
+    doc.text('PROYECTOS  INTEGRALES', pageWidth - 15, 25, { align: 'right' })
+    doc.text('DE MUEBLES A MEDIDA', pageWidth - 15, 30, { align: 'right' })
+    
+    // Título Central - Middle Right (Más grande y audaz)
+    doc.setFontSize(55)
     doc.setFont('helvetica', 'bold')
-    doc.text('strongwood®', 35, pageHeight - 40)
+    doc.text('/PRESUPUESTO', pageWidth - 15, 140, { align: 'right' })
+    doc.text('2026', pageWidth - 15, 162, { align: 'right' })
+    
+    // Marca - Bottom (Muy grande)
+    doc.setFontSize(75)
+    doc.setFont('helvetica', 'bold')
+    doc.text('strongwood®', 15, pageHeight - 25)
 
     // --- PÁGINA 2: QUIENES SOMOS ---
     doc.addPage()
@@ -1863,9 +1875,6 @@ export function QuotesClient({
                       <Button type="button" variant="outline" size="sm" onClick={addHardware}>
                         <Plus className="h-4 w-4 mr-2" /> Agregar Herraje
                       </Button>
-                      <Button type="button" variant="outline" size="sm" onClick={syncHardware}>
-                        <ArrowUpDown className="h-4 w-4 mr-2" /> Sincronizar desde Muebles
-                      </Button>
                     </div>
                   </div>
                   <div className="border rounded-md overflow-hidden">
@@ -2065,9 +2074,6 @@ export function QuotesClient({
                       <Button type="button" variant="outline" size="sm" onClick={addLabor}>
                         <Plus className="h-4 w-4 mr-2" /> Agregar Mano de Obra
                       </Button>
-                      <Button type="button" variant="outline" size="sm" onClick={syncLabor}>
-                        <ArrowUpDown className="h-4 w-4 mr-2" /> Sincronizar desde Muebles
-                      </Button>
                     </div>
                   </div>
                   <div className="border rounded-md overflow-hidden">
@@ -2162,9 +2168,6 @@ export function QuotesClient({
                     <div className="flex gap-2">
                       <Button type="button" variant="outline" size="sm" onClick={addAdditionalCost}>
                         <Plus className="h-4 w-4 mr-2" /> Agregar Costo Extra
-                      </Button>
-                      <Button type="button" variant="outline" size="sm" onClick={syncAdditionalCosts}>
-                        <ArrowUpDown className="h-4 w-4 mr-2" /> Sincronizar desde Muebles
                       </Button>
                     </div>
                   </div>
