@@ -120,7 +120,7 @@ export function FurnitureClient({ initialItems, parts, extraParts, costs, laborC
         edges3: p.edges3,
         edges4: p.edges4,
         edgeSize: p.edgeSize,
-        orientation: p.orientation,
+        grain: p.grain ?? 'Ninguna'
       })),
       extraParts: item.extraParts.map((ep: any) => ({
         idPartExtra: ep.idPartExtra,
@@ -400,7 +400,7 @@ export function FurnitureClient({ initialItems, parts, extraParts, costs, laborC
       ...formData,
       parts: [
         ...formData.parts,
-        { idPart: availableParts[0].id, quantity: 1, edges1: false, edges2: false, edges3: false, edges4: false, edgeSize: 0, orientation: '' }
+        { idPart: availableParts[0].id, quantity: 1, edges1: false, edges2: false, edges3: false, edges4: false, edgeSize: 0, grain: 'Ninguna' }
       ]
     })
   }
@@ -711,6 +711,7 @@ export function FurnitureClient({ initialItems, parts, extraParts, costs, laborC
                           <TableHead>Subtotal</TableHead>
                           <TableHead>Cantos (1-4)</TableHead>
                           <TableHead className="w-24">Tam. Canto</TableHead>
+                          <TableHead className="w-32">Veta</TableHead>
                           <TableHead className="w-10"></TableHead>
                         </TableRow>
                       </TableHeader>
@@ -800,6 +801,17 @@ export function FurnitureClient({ initialItems, parts, extraParts, costs, laborC
                               <Input type="number" className="h-8" value={p.edgeSize ?? 0} onChange={e => updatePartConfig(idx, 'edgeSize', parseInt(e.target.value) || 0)} />
                             </TableCell>
                             <TableCell>
+                              <select 
+                                className="w-full bg-transparent border-none focus:ring-0 text-sm font-medium"
+                                value={p.grain || 'Ninguna'} 
+                                onChange={e => updatePartConfig(idx, 'grain', e.target.value)}
+                              >
+                                <option value="Ninguna">Ninguna</option>
+                                <option value="Longitud">Longitud</option>
+                                <option value="Ancho">Ancho</option>
+                              </select>
+                            </TableCell>
+                            <TableCell>
                               <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => removePartConfig(idx)}>
                                 <Trash2 className="h-4 w-4" />
                               </Button>
@@ -808,7 +820,7 @@ export function FurnitureClient({ initialItems, parts, extraParts, costs, laborC
                         ))}
                         {formData.parts.length === 0 && (
                           <TableRow>
-                            <TableCell colSpan={5} className="text-center py-4 text-muted-foreground text-sm">
+                            <TableCell colSpan={9} className="text-center py-4 text-muted-foreground text-sm">
                               Sin piezas configuradas. Haga clic en Agregar Pieza.
                             </TableCell>
                           </TableRow>

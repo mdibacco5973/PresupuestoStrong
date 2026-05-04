@@ -2,6 +2,12 @@
 
 import prisma from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
+import fs from 'fs/promises'
+import path from 'path'
+import XlsxPopulate from 'xlsx-populate'
+import { evaluateFormula } from '@/lib/utils/formula'
+import PizZip from 'pizzip'
+import Docxtemplater from 'docxtemplater'
 
 export type QuoteDetailInput = {
   furnitureId: number | string
@@ -36,6 +42,7 @@ export type QuotePartInput = {
   partId: number | string | null
   furnitureId: number | string
   woodId: number | string
+  grain: string | null
 }
 
 export type QuoteHardwareInput = {
@@ -304,6 +311,7 @@ export async function createQuote(data: QuoteInput) {
           part: part.partId ? { connect: { id: BigInt(part.partId) } } : undefined,
           furniture: part.furnitureId ? { connect: { id: BigInt(part.furnitureId) } } : undefined,
           wood: { connect: { id: BigInt(part.woodId) } },
+          grain: part.grain,
         }))
       },
       hardware: {
@@ -414,6 +422,7 @@ export async function updateQuote(id: string, data: QuoteInput) {
             part: part.partId ? { connect: { id: BigInt(part.partId) } } : undefined,
             furniture: part.furnitureId ? { connect: { id: BigInt(part.furnitureId) } } : undefined,
             wood: { connect: { id: BigInt(part.woodId) } },
+            grain: part.grain,
           }))
         },
         hardware: {
@@ -500,7 +509,8 @@ export async function duplicateQuote(id: string) {
     parts: source.parts.map((p: any) => ({
       partId: p.partId,
       furnitureId: p.furnitureId,
-      woodId: p.woodId
+      woodId: p.woodId,
+      grain: p.grain
     })),
     hardware: source.hardware.map((h: any) => ({
       hardwareId: h.hardwareId,
@@ -533,4 +543,187 @@ export async function deleteQuote(id: string) {
     where: { id: quoteId },
   })
   revalidatePath('/quotes')
+}
+
+export async function generateCutsExcel(id: string) {
+  const quote = await getQuoteById(id)
+  if (!quote) throw new Error('Presupuesto no encontrado')
+
+  const woods = await prisma.wood.findMany()
+  const furnitures = await prisma.furniture.findMany({
+    include: { parts: { include: { part: true } } }
+  })
+
+  // 1. Group parts by wood
+  const partsByWood = new Map<string, any[]>()
+  
+  quote.details.forEach((detail: any) => {
+    const furniture = furnitures.find(f => f.id.toString() === detail.furnitureId.toString())
+    if (!furniture || !furniture.parts) return
+
+    furniture.parts.forEach((p: any) => {
+      const partDef = p.part
+      if (!partDef) return
+
+      const assignment = quote.parts.find((qp: any) => 
+        qp.furnitureId?.toString() === detail.furnitureId.toString() && 
+        qp.partId?.toString() === partDef.id.toString()
+      )
+      
+      const wood = woods.find(w => w.id?.toString() === assignment?.woodId?.toString()) || woods[0]
+      const woodName = wood ? wood.name : 'Madera no definida'
+      
+      if (!partsByWood.has(woodName)) {
+        partsByWood.set(woodName, [])
+      }
+
+      const thickness = wood ? Number(wood.thickness) : 18
+      const context = {
+        L: Number(detail.length),
+        A: Number(detail.width),
+        P: Number(detail.depth),
+        E: thickness
+      }
+
+      const l = evaluateFormula(partDef.formulaLength, context)
+      const w = evaluateFormula(partDef.formulaWidth, context)
+      const quantity = p.quantity * detail.quantity
+
+      partsByWood.get(woodName)!.push({
+        name: partDef.name,
+        length: l,
+        width: w,
+        quantity: quantity,
+        grain: assignment?.grain || 'Ninguna',
+        edges1: p.edges1,
+        edges2: p.edges2,
+        edges3: p.edges3,
+        edges4: p.edges4,
+        woodName: woodName
+      })
+    })
+  })
+
+  const woodCount = partsByWood.size
+  if (woodCount === 0) throw new Error('No se encontraron maderas asignadas en este presupuesto.')
+
+  const templateNumber = Math.min(woodCount, 5)
+  const templatePath = path.join(process.cwd(), 'public', 'Templates', `Planilla${templateNumber}.xlsx`)
+  
+  try {
+    const templateData = await fs.readFile(templatePath)
+    const workbook = await XlsxPopulate.fromDataAsync(templateData)
+
+    const woodNames = Array.from(partsByWood.keys())
+    woodNames.forEach((woodName, index) => {
+      const sheet = workbook.sheet(index)
+      if (!sheet) return
+
+      const parts = partsByWood.get(woodName) || []
+      parts.forEach((part, partIdx) => {
+        const rowIdx = partIdx + 24
+        sheet.cell(rowIdx, 3).value(`${quote.code} - ${part.name}`)
+        sheet.cell(rowIdx, 4).value(part.length)
+        sheet.cell(rowIdx, 5).value(part.width)
+        sheet.cell(rowIdx, 6).value(part.quantity)
+        sheet.cell(rowIdx, 7).value(part.grain === 'Ninguna' ? '' : part.grain)
+        sheet.cell(rowIdx, 8).value(part.edges1 ? 1 : 0)
+        sheet.cell(rowIdx, 9).value(part.edges2 ? 1 : 0)
+        sheet.cell(rowIdx, 10).value(part.edges3 ? 1 : 0)
+        sheet.cell(rowIdx, 11).value(part.edges4 ? 1 : 0)
+        sheet.cell(rowIdx, 18).value(part.woodName)
+      })
+    })
+
+    const buffer = await workbook.outputAsync()
+    return {
+      success: true,
+      data: buffer.toString('base64'),
+      fileName: `${quote.code}.xlsx`
+    }
+  } catch (error) {
+    console.error('Error in generateCutsExcel:', error)
+    throw new Error('Error al procesar la plantilla Excel en el servidor')
+  }
+}
+
+export async function generateStrongWord(id: string) {
+  const quote = await getQuoteById(id)
+  if (!quote) throw new Error('Presupuesto no encontrado')
+
+  const woods = await prisma.wood.findMany()
+  const templatePath = path.join(process.cwd(), 'public', 'Templates', 'PresupuestoStrong.docx')
+  
+  try {
+    const content = await fs.readFile(templatePath)
+    const zip = new PizZip(content)
+    const doc = new Docxtemplater(zip, {
+      paragraphLoop: true,
+      linebreaks: true,
+    })
+
+    const dateStr = new Date().toLocaleDateString('es-AR')
+    const clientName = quote.client?.name || 'Cliente'
+    const clientAddress = quote.client?.address || 'Sin direccion'
+
+    const formatARS = (value: number) => {
+      return new Intl.NumberFormat('es-AR', {
+        style: 'currency',
+        currency: 'ARS',
+      }).format(value)
+    }
+
+    const totalPrice = Number(quote.pricePesos || 0)
+
+    // Generar lista de muebles y maderas
+    const furnitureList = quote.details.map((detail: any) => {
+      const furnitureName = detail.furniture?.name || 'Mueble'
+      // Buscar maderas usadas para las piezas de este mueble en este presupuesto
+      const assignedWoodIds = quote.parts
+        .filter((p: any) => p.furnitureId?.toString() === detail.furnitureId?.toString())
+        .map((p: any) => p.woodId?.toString())
+      
+      const uniqueWoodIds = Array.from(new Set(assignedWoodIds))
+      const usedWoods = uniqueWoodIds
+        .map(id => woods.find(w => w.id?.toString() === id)?.name)
+        .filter(Boolean)
+        .join(', ')
+      
+      return `${furnitureName}${usedWoods ? ` (${usedWoods})` : ''}`
+    }).join('\n')
+
+    // Reemplazar los placeholders
+    doc.render({
+      FECHA: dateStr,
+      CLIENTE: clientName,
+      DIRECCION: clientAddress,
+      'NOMBRE PROYECTO': quote.description || 'Sin descripción',
+      MUEBLES: 'Fabricación de mobiliario a medida según diseño acordado.',
+      'MUEBLES Y MADERAS': furnitureList,
+      VALOR: formatARS(totalPrice),
+      SUBTOTAL: formatARS(totalPrice),
+      TOTAL: formatARS(totalPrice)
+    })
+
+    const buf = doc.getZip().generate({
+      type: 'nodebuffer',
+      compression: 'DEFLATE',
+    })
+
+    return {
+      success: true,
+      data: buf.toString('base64'),
+      fileName: `${quote.code}.docx`
+    }
+  } catch (error: unknown) {
+    console.error('Error detallado en generateStrongWord:', error)
+    // Capturar errores específicos de docxtemplater
+    const err = error as any
+    if (err.properties && err.properties.errors instanceof Array) {
+      const errorMessages = err.properties.errors.map((e: any) => e.message).join(', ')
+      console.error('Errores de Docxtemplater:', errorMessages)
+      throw new Error(`Error de plantilla Word: ${errorMessages}`)
+    }
+    throw new Error(`Error al editar el Word: ${error instanceof Error ? error.message : String(error)}`)
+  }
 }

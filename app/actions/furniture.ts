@@ -11,7 +11,7 @@ export type FurnitureConfigInput = {
   edges3: boolean
   edges4: boolean
   edgeSize: number | null
-  orientation: string | null
+  grain: string | null
 }
 
 export type FurnitureExtraConfigInput = {
@@ -175,7 +175,7 @@ export async function createFurniture(data: FurnitureInput) {
             edges3: p.edges3,
             edges4: p.edges4,
             edgeSize: p.edgeSize,
-            orientation: p.orientation,
+            grain: p.grain,
           })),
         },
         extraParts: {
@@ -257,7 +257,7 @@ export async function updateFurniture(id: string | number, data: FurnitureInput)
               edges3: p.edges3,
               edges4: p.edges4,
               edgeSize: p.edgeSize,
-              orientation: p.orientation,
+              grain: p.grain,
             })),
           },
           extraParts: {
@@ -353,7 +353,7 @@ export async function duplicateFurniture(id: string | number) {
             edges3: p.edges3,
             edges4: p.edges4,
             edgeSize: p.edgeSize,
-            orientation: p.orientation,
+            grain: p.grain,
           }))
         },
         extraParts: {

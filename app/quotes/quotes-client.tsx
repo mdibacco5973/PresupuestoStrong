@@ -1,10 +1,11 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { Plus, Pencil, Trash2, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, FileText, Copy, Search } from 'lucide-react'
-import { QuoteInput, QuoteDetailInput, QuoteAdditionalCostInput, QuotePartInput, QuoteHardwareInput, QuoteFinishInput, QuoteLaborInput, QuoteWoodInput, createQuote, updateQuote, deleteQuote, duplicateQuote, getQuotes } from '@/app/actions/quote'
+import { Plus, Pencil, Trash2, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, FileText, Copy, Search, Scissors } from 'lucide-react'
+import { QuoteInput, QuoteDetailInput, QuoteAdditionalCostInput, QuotePartInput, QuoteHardwareInput, QuoteFinishInput, QuoteLaborInput, QuoteWoodInput, createQuote, updateQuote, deleteQuote, duplicateQuote, getQuotes, generateCutsExcel, generateStrongWord } from '@/app/actions/quote'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
+import { evaluateFormula } from '@/lib/utils/formula'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -58,6 +59,7 @@ type QuotePart = {
   partId: string | number
   furnitureId: string | number
   woodId: string | number
+  grain: string | null
 }
 
 type QuoteWood = {
@@ -287,21 +289,6 @@ export function QuotesClient({
     
     // Sumar el resto de los costos fijos del mueble (herrajes, extras, mano de obra, etc.)
     return partsPriceTotal + (furniture.hardwarePrice || 0) + (furniture.costPrice || 0) + (furniture.laborPrice || 0) + (furniture.additionalPrice || 0)
-  }
-
-  const evaluateFormula = (formula: string, context: { L: number, A: number, P: number, E: number }) => {
-    if (!formula) return 0
-    try {
-      const expression = formula.toUpperCase()
-        .replace(/L/g, context.L.toString())
-        .replace(/A/g, context.A.toString())
-        .replace(/P/g, context.P.toString())
-        .replace(/E/g, context.E.toString())
-      const result = new Function(`return ${expression}`)()
-      return Math.max(0, Math.round(result))
-    } catch {
-      return 0
-    }
   }
 
   const woodStatsArray = useMemo(() => {
@@ -568,7 +555,8 @@ export function QuotesClient({
         id: p.id,
         partId: p.partId ?? null,
         furnitureId: p.furnitureId,
-        woodId: p.woodId
+        woodId: p.woodId,
+        grain: p.grain ?? 'Ninguna'
       })),
       hardware: (quote.hardware || []).map(hw => ({
         id: hw.id,
@@ -833,6 +821,36 @@ export function QuotesClient({
     doc.save(`Presupuesto_${quote.code}_Full.pdf`)
   }
 
+  const downloadCutsExcel = async (quote: Quote) => {
+    try {
+      const result = await generateCutsExcel(quote.id)
+      
+      if (result.success) {
+        // Convert base64 to Blob
+        const byteCharacters = atob(result.data)
+        const byteNumbers = new Array(byteCharacters.length)
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i)
+        }
+        const byteArray = new Uint8Array(byteNumbers)
+        const blob = new Blob([byteArray], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+        
+        // Trigger download
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = result.fileName
+        document.body.appendChild(a)
+        a.click()
+        window.URL.revokeObjectURL(url)
+        document.body.removeChild(a)
+      }
+    } catch (error) {
+      console.error('Error al generar Excel de cortes:', error)
+      alert(`Error al generar el archivo de cortes: ${error instanceof Error ? error.message : String(error)}`)
+    }
+  }
+
   const handleDelete = async (id: string) => {
     if (!confirm('¿Estás seguro de que deseas eliminar este presupuesto?')) return
     setIsLoading(true)
@@ -1026,7 +1044,8 @@ export function QuotesClient({
         newParts.push({
           partId: partData.id,
           furnitureId: furniture.id,
-          woodId: woodId || 0
+          woodId: woodId || 0,
+          grain: p.grain || 'Ninguna'
         })
       })
     })
@@ -1769,6 +1788,7 @@ export function QuotesClient({
                           <TableHead>Mueble Relacionado</TableHead>
                           <TableHead className="text-center">Medidas (LxA)</TableHead>
                           <TableHead>Madera</TableHead>
+                          <TableHead className="w-32">Veta</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -1811,6 +1831,17 @@ export function QuotesClient({
                                       {w.name}
                                     </option>
                                   ))}
+                                </select>
+                              </TableCell>
+                              <TableCell>
+                                <select 
+                                  className="w-full bg-transparent border-none focus:ring-0 text-sm font-medium"
+                                  value={part.grain || 'Ninguna'} 
+                                  onChange={e => updatePart(idx, { grain: e.target.value })}
+                                >
+                                  <option value="Ninguna">Ninguna</option>
+                                  <option value="Longitud">Longitud</option>
+                                  <option value="Ancho">Ancho</option>
                                 </select>
                               </TableCell>
                             </TableRow>
@@ -2334,11 +2365,47 @@ export function QuotesClient({
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => generatePDF(quote)}
+                          onClick={async () => {
+                            try {
+                              const result = await generateStrongWord(quote.id)
+                              if (result.success) {
+                                // Convert base64 to Blob
+                                const byteCharacters = atob(result.data)
+                                const byteNumbers = new Array(byteCharacters.length)
+                                for (let i = 0; i < byteCharacters.length; i++) {
+                                  byteNumbers[i] = byteCharacters.charCodeAt(i)
+                                }
+                                const byteArray = new Uint8Array(byteNumbers)
+                                const blob = new Blob([byteArray], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' })
+                                
+                                // Trigger download
+                                const url = window.URL.createObjectURL(blob)
+                                const a = document.createElement('a')
+                                a.href = url
+                                a.download = result.fileName
+                                document.body.appendChild(a)
+                                a.click()
+                                window.URL.revokeObjectURL(url)
+                                document.body.removeChild(a)
+                              }
+                            } catch (error) {
+                              console.error('Error al generar Word:', error)
+                              alert('Error al generar el documento Word con los datos actualizados')
+                            }
+                          }}
                           className="h-8 w-8 text-orange-600 hover:bg-orange-50"
-                          title="Generar PDF"
+                          title="Descargar Word"
                         >
                           <FileText className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => downloadCutsExcel(quote)}
+                          className="h-8 w-8 text-indigo-600 hover:bg-indigo-50"
+                          title="Cortes"
+                        >
+                          <Scissors className="h-4 w-4" />
                         </Button>
                         <Button
                           variant="ghost"

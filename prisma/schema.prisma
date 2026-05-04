@@ -554,6 +554,7 @@ model QuotePart {
   partId      BigInt?  @map("IdParts")
   furnitureId BigInt?  @map("IdFurniture")
   woodId      BigInt   @map("IdWood")
+  grain       String?  @map("Grain") @db.VarChar(50)
 
   quote       Quote?    @relation(fields: [quoteId], references: [id], onDelete: Cascade)
   part        Part?     @relation(fields: [partId], references: [id])
@@ -681,7 +682,7 @@ model FurnitureConfig {
   edges3      Boolean  @default(false) @map("Edges3")
   edges4      Boolean  @default(false) @map("Edges4")
   edgeSize    Decimal? @map("EdgeSize") @db.Decimal(10, 2)
-  orientation String?  @map("Orientation") @db.VarChar(50)
+  grain       String?  @map("Grain") @db.VarChar(50)
 
   furniture Furniture @relation(fields: [idFurniture], references: [id], onDelete: Cascade)
   part      Part      @relation(fields: [idPart], references: [id])
