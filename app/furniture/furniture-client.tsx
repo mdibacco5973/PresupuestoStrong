@@ -194,6 +194,19 @@ export function FurnitureClient({ initialItems, parts, extraParts, costs, laborC
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    // Validar que se hayan seleccionado ítems en todas las filas
+    const hasEmptyParts = formData.parts.some(p => !p.idPart)
+    const hasEmptyExtra = formData.extraParts.some(ep => !ep.idPartExtra)
+    const hasEmptyCosts = formData.costs.some(c => !c.idCost)
+    const hasEmptyLabor = formData.laborCosts.some(l => !l.idLaborCost)
+    const hasEmptyAdditional = formData.additionalCosts.some(a => !a.idAdditionalCosts)
+
+    if (hasEmptyParts || hasEmptyExtra || hasEmptyCosts || hasEmptyLabor || hasEmptyAdditional) {
+      alert('Por favor, seleccione un ítem en todas las filas de las grillas o elimine las filas vacías.')
+      return
+    }
+
     setIsPending(true)
     try {
       if (editingItem) {
@@ -399,16 +412,11 @@ export function FurnitureClient({ initialItems, parts, extraParts, costs, laborC
 
   // Configuration Handlers
   const addPartConfig = () => {
-    const availableParts = parts.filter(part => !formData.parts.some(p => p.idPart === part.id))
-    if (availableParts.length === 0) {
-      alert('No hay más piezas disponibles para agregar.')
-      return
-    }
     setFormData({
       ...formData,
       parts: [
         ...formData.parts,
-        { idPart: availableParts[0].id, quantity: 1, edges1: false, edges2: false, edges3: false, edges4: false, edgeSize: 0, grain: 'Ninguna' }
+        { idPart: '', quantity: 1, edges1: false, edges2: false, edges3: false, edges4: false, edgeSize: 0, grain: 'Ninguna' }
       ]
     })
   }
@@ -426,14 +434,9 @@ export function FurnitureClient({ initialItems, parts, extraParts, costs, laborC
   }
 
   const addExtraConfig = () => {
-    const availableExtras = extraParts.filter(ep => !formData.extraParts.some(p => p.idPartExtra === ep.id))
-    if (availableExtras.length === 0) {
-      alert('No hay más herrajes disponibles para agregar.')
-      return
-    }
     setFormData({
       ...formData,
-      extraParts: [...formData.extraParts, { idPartExtra: availableExtras[0].id, quantity: 1 }]
+      extraParts: [...formData.extraParts, { idPartExtra: '', quantity: 1 }]
     })
   }
 
@@ -450,14 +453,9 @@ export function FurnitureClient({ initialItems, parts, extraParts, costs, laborC
   }
 
   const addCostConfig = () => {
-    const availableCosts = costs.filter(c => !formData.costs.some(p => p.idCost === c.id))
-    if (availableCosts.length === 0) {
-      alert('No hay más acabados disponibles para agregar.')
-      return
-    }
     setFormData({
       ...formData,
-      costs: [...formData.costs, { idCost: availableCosts[0].id, quantity: 1 }]
+      costs: [...formData.costs, { idCost: '', quantity: 1 }]
     })
   }
 
@@ -474,14 +472,9 @@ export function FurnitureClient({ initialItems, parts, extraParts, costs, laborC
   }
 
   const addLaborCostConfig = () => {
-    const availableLabor = laborCosts.filter(l => !formData.laborCosts.some(p => p.idLaborCost === l.id))
-    if (availableLabor.length === 0) {
-      alert('No hay más conceptos de mano de obra disponibles para agregar.')
-      return
-    }
     setFormData({
       ...formData,
-      laborCosts: [...formData.laborCosts, { idLaborCost: availableLabor[0].id, quantity: 1 }]
+      laborCosts: [...formData.laborCosts, { idLaborCost: '', quantity: 1 }]
     })
   }
 
@@ -498,14 +491,9 @@ export function FurnitureClient({ initialItems, parts, extraParts, costs, laborC
   }
 
   const addAdditionalCostConfig = () => {
-    const availableAdditional = additionalCosts.filter(a => !formData.additionalCosts.some(p => p.idAdditionalCosts === a.id))
-    if (availableAdditional.length === 0) {
-      alert('No hay más extras disponibles para agregar.')
-      return
-    }
     setFormData({
       ...formData,
-      additionalCosts: [...formData.additionalCosts, { idAdditionalCosts: availableAdditional[0].id, quantity: 1 }]
+      additionalCosts: [...formData.additionalCosts, { idAdditionalCosts: '', quantity: 1 }]
     })
   }
 
@@ -732,6 +720,7 @@ export function FurnitureClient({ initialItems, parts, extraParts, costs, laborC
                                 value={p.idPart} 
                                 onChange={e => updatePartConfig(idx, 'idPart', e.target.value)}
                               >
+                                <option value="" disabled>Seleccione...</option>
                                 {sortedParts.map((part: any) => {
                                   const isSelected = formData.parts.some((p2, i2) => i2 !== idx && p2.idPart === part.id)
                                   return <option key={part.id} value={part.id} disabled={isSelected}>{part.name}</option>
@@ -867,6 +856,7 @@ export function FurnitureClient({ initialItems, parts, extraParts, costs, laborC
                                 value={ep.idPartExtra} 
                                 onChange={e => updateExtraConfig(idx, 'idPartExtra', e.target.value)}
                               >
+                                <option value="" disabled>Seleccione...</option>
                                 {sortedExtraParts.map((item: any) => {
                                   const isSelected = formData.extraParts.some((p2, i2) => i2 !== idx && p2.idPartExtra === item.id)
                                   return <option key={item.id} value={item.id} disabled={isSelected}>{item.name}</option>
@@ -936,6 +926,7 @@ export function FurnitureClient({ initialItems, parts, extraParts, costs, laborC
                                 value={c.idCost} 
                                 onChange={e => updateCostConfig(idx, 'idCost', e.target.value)}
                               >
+                                <option value="" disabled>Seleccione...</option>
                                 {sortedCosts.map((item: any) => {
                                   const isSelected = formData.costs.some((c2, i2) => i2 !== idx && c2.idCost === item.id)
                                   return <option key={item.id} value={item.id} disabled={isSelected}>{item.name}</option>
@@ -1005,6 +996,7 @@ export function FurnitureClient({ initialItems, parts, extraParts, costs, laborC
                                 value={l.idLaborCost} 
                                 onChange={e => updateLaborCostConfig(idx, 'idLaborCost', e.target.value)}
                               >
+                                <option value="" disabled>Seleccione...</option>
                                 {sortedLaborCosts.map((item: any) => {
                                   const isSelected = formData.laborCosts.some((l2, i2) => i2 !== idx && l2.idLaborCost === item.id)
                                   return <option key={item.id} value={item.id} disabled={isSelected}>{item.name}</option>
@@ -1085,6 +1077,7 @@ export function FurnitureClient({ initialItems, parts, extraParts, costs, laborC
                                 value={a.idAdditionalCosts} 
                                 onChange={e => updateAdditionalCostConfig(idx, 'idAdditionalCosts', e.target.value)}
                               >
+                                <option value="" disabled>Seleccione...</option>
                                 {sortedAdditionalCosts.map((item: any) => {
                                   const isSelected = formData.additionalCosts.some((a2, i2) => i2 !== idx && a2.idAdditionalCosts === item.id)
                                   return <option key={item.id} value={item.id} disabled={isSelected}>{item.name}</option>

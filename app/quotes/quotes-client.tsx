@@ -883,6 +883,20 @@ export function QuotesClient({
 
     const submissionData = { ...formData, woods: quoteWoods }
 
+    // Validar que se hayan seleccionado ítems en todas las filas
+    const hasEmptyDetails = formData.details.some(d => !d.furnitureId)
+    const hasEmptyHardware = formData.hardware.some(h => !h.hardwareId)
+    const hasEmptyFinishes = formData.finishes.some(f => !f.finishId)
+    const hasEmptyLabor = formData.labor.some(l => !l.laborId)
+    const hasEmptyAdditional = formData.additionalCosts.some(a => !a.additionalCostId)
+    const hasEmptyPartsWood = formData.parts.some(p => !p.woodId)
+
+    if (hasEmptyDetails || hasEmptyHardware || hasEmptyFinishes || hasEmptyLabor || hasEmptyAdditional || hasEmptyPartsWood) {
+      alert('Por favor, seleccione un ítem en todas las filas de las grillas o elimine las filas vacías.')
+      setIsLoading(false)
+      return
+    }
+
     try {
       if (editingQuote) {
         const updated = await updateQuote(editingQuote.id, submissionData)
@@ -907,6 +921,10 @@ export function QuotesClient({
     const mergedMap = new Map<string, QuoteDetailInput>()
     
     details.forEach(d => {
+      if (!d.furnitureId) {
+        mergedMap.set(`empty-${Math.random()}`, { ...d })
+        return
+      }
       // Clave única: ID + Largo + Ancho + Profundidad
       const key = `${d.furnitureId}-${d.length}-${d.width}-${d.depth}`
       if (mergedMap.has(key)) {
@@ -922,22 +940,19 @@ export function QuotesClient({
   }
 
   const addDetail = () => {
-    const furnitureToAdd = furnitures[0]
-    if (!furnitureToAdd) return
-
     const newDetail: QuoteDetailInput = {
-      furnitureId: furnitureToAdd.id,
+      furnitureId: '',
       quantity: 1,
-      unitPrice: furnitureToAdd.furnitureTotal || 0,
-      price: furnitureToAdd.furnitureTotal || 0,
-      length: furnitureToAdd.length || 0,
-      width: furnitureToAdd.width || 0,
-      depth: furnitureToAdd.depth || 0,
+      unitPrice: 0,
+      price: 0,
+      length: 0,
+      width: 0,
+      depth: 0,
     }
 
     setFormData(prev => ({
       ...prev,
-      details: mergeDuplicates([...prev.details, newDetail])
+      details: [...prev.details, newDetail]
     }))
   }
 
@@ -1214,6 +1229,10 @@ export function QuotesClient({
   const mergeHardware = (hardware: QuoteHardwareInput[]) => {
     const map = new Map<string, QuoteHardwareInput>()
     hardware.forEach(h => {
+      if (!h.hardwareId) {
+        map.set(`empty-${Math.random()}`, { ...h })
+        return
+      }
       const key = h.hardwareId?.toString() || '0'
       if (map.has(key)) {
         const existing = map.get(key)!
@@ -1235,6 +1254,10 @@ export function QuotesClient({
     const totalFrontSurface = calculateFrontSurface()
     
     finishes.forEach(f => {
+      if (!f.finishId) {
+        map.set(`empty-${Math.random()}`, { ...f })
+        return
+      }
       const key = f.finishId?.toString() || '0'
       const finishData = costs.find(c => c.id.toString() === key)
       const isLaqueado = finishData?.name.toUpperCase().includes('LAQUEA')
@@ -1260,6 +1283,10 @@ export function QuotesClient({
   const mergeLabor = (labor: QuoteLaborInput[]) => {
     const map = new Map<string, QuoteLaborInput>()
     labor.forEach(l => {
+      if (!l.laborId) {
+        map.set(`empty-${Math.random()}`, { ...l })
+        return
+      }
       const key = l.laborId?.toString() || '0'
       const laborData = laborCosts.find(lc => lc.id.toString() === key)
       
@@ -1280,6 +1307,10 @@ export function QuotesClient({
   const mergeAdditionalCosts = (costs: QuoteAdditionalCostInput[]) => {
     const map = new Map<string, QuoteAdditionalCostInput>()
     costs.forEach(c => {
+      if (!c.additionalCostId) {
+        map.set(`empty-${Math.random()}`, { ...c })
+        return
+      }
       const key = c.additionalCostId?.toString() || '0'
       const acData = additionalCosts.find(ac => ac.id.toString() === key)
       
@@ -1298,77 +1329,57 @@ export function QuotesClient({
   }
 
   const addHardware = () => {
-    const defaultHW = extraParts[0]
     const newHW: QuoteHardwareInput = { 
-      hardwareId: defaultHW?.id || 0, 
-      furnitureId: formData.details[0]?.furnitureId || 0,
-      code: defaultHW?.code || '',
+      hardwareId: '', 
+      furnitureId: '',
+      code: '',
       quantity: 1,
       unitMeasure: 'un',
-      totalPrice: Number(defaultHW?.price || 0)
+      totalPrice: 0
     }
     setFormData(prev => ({
       ...prev,
-      hardware: mergeHardware([...prev.hardware, newHW])
+      hardware: [...prev.hardware, newHW]
     }))
   }
 
   const addFinish = () => {
-    const frontSurface = calculateFrontSurface()
-    let defaultFinish = costs[0]
-    
-    if (defaultFinish?.name.toUpperCase().includes('LAQUEA') && frontSurface <= 0) {
-      const alternative = costs.find(c => !c.name.toUpperCase().includes('LAQUEA'))
-      if (!alternative) {
-        alert('No se pueden agregar acabados de laqueado porque no hay piezas marcadas como "Frente".')
-        return
-      }
-      defaultFinish = alternative
-    }
-
-    const price = defaultFinish ? Number(defaultFinish.price) : 0
-    const qty = defaultFinish?.name.toUpperCase().includes('LAQUEA') ? frontSurface : 1
-    
     const newFinish: QuoteFinishInput = { 
-      finishId: defaultFinish?.id || 0, 
-      furnitureId: formData.details[0]?.furnitureId || 0,
-      quantity: qty,
-      totalPrice: qty * price
+      finishId: '', 
+      furnitureId: '',
+      quantity: 1,
+      totalPrice: 0
     }
     
     setFormData(prev => ({
       ...prev,
-      finishes: mergeFinishes([...prev.finishes, newFinish])
+      finishes: [...prev.finishes, newFinish]
     }))
   }
 
   const addLabor = () => {
-    const defaultLabor = laborCosts[0]
-    const price = defaultLabor ? Number(defaultLabor.price) : 0
     const newLaborItem: QuoteLaborInput = { 
-      laborId: defaultLabor?.id || 0, 
-      furnitureId: formData.details[0]?.furnitureId || 0,
+      laborId: '', 
+      furnitureId: '',
       quantity: 1,
-      totalPrice: price
+      totalPrice: 0
     }
     setFormData(prev => ({
       ...prev,
-      labor: mergeLabor([...prev.labor, newLaborItem])
+      labor: [...prev.labor, newLaborItem]
     }))
   }
 
   const addAdditionalCost = () => {
-    const defaultAC = additionalCosts[0]
-    const price = defaultAC ? Number(defaultAC.price) : 0
     const newAC: QuoteAdditionalCostInput = { 
-      additionalCostId: defaultAC?.id || 0, 
-      furnitureId: formData.details[0]?.furnitureId || 0,
+      additionalCostId: '', 
+      furnitureId: '',
       quantity: 1,
-      totalPrice: price
+      totalPrice: 0
     }
     setFormData(prev => ({
       ...prev,
-      additionalCosts: mergeAdditionalCosts([...prev.additionalCosts, newAC])
+      additionalCosts: [...prev.additionalCosts, newAC]
     }))
   }
 
@@ -1725,6 +1736,7 @@ export function QuotesClient({
                                 value={detail.furnitureId} 
                                 onChange={e => updateDetail(idx, { furnitureId: e.target.value })}
                               >
+                                <option value="" disabled>Seleccione mueble...</option>
                                 {furnitures.map(f => (
                                   <option key={f.id} value={f.id}>
                                     [{f.code}] {f.name}
@@ -1937,12 +1949,12 @@ export function QuotesClient({
                                 />
                               </TableCell>
                               <TableCell>
-                                <select
-                                  className="flex h-8 w-full rounded-md border border-input bg-transparent px-2 py-1 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                                  value={hw.hardwareId ?? 0}
-                                  onChange={(e) => updateHardwareId(idx, e.target.value)}
-                                >
-                                  <option value={0} disabled>Seleccione herraje...</option>
+                                  <select
+                                    className="flex h-8 w-full rounded-md border border-input bg-transparent px-2 py-1 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                    value={hw.hardwareId ?? ''}
+                                    onChange={(e) => updateHardwareId(idx, e.target.value)}
+                                  >
+                                    <option value="" disabled>Seleccione herraje...</option>
                                   {extraParts.map(p => (
                                     <option key={p.id} value={p.id}>
                                       {p.name}
@@ -2037,9 +2049,10 @@ export function QuotesClient({
                               <TableCell>
                                 <select
                                   className="flex h-8 w-full rounded-md border border-input bg-transparent px-2 py-1 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                                  value={f.finishId ?? 0}
+                                  value={f.finishId ?? ''}
                                   onChange={(e) => updateFinishId(idx, e.target.value)}
                                 >
+                                  <option value="" disabled>Seleccione acabado...</option>
                                   {costs.map(c => (
                                     <option key={c.id} value={c.id}>
                                       {c.name}
@@ -2129,9 +2142,10 @@ export function QuotesClient({
                               <TableCell>
                                 <select
                                   className="flex h-8 w-full rounded-md border border-input bg-transparent px-2 py-1 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                                  value={l.laborId ?? 0}
+                                  value={l.laborId ?? ''}
                                   onChange={(e) => updateLaborId(idx, e.target.value)}
                                 >
+                                  <option value="" disabled>Seleccione concepto...</option>
                                   {laborCosts.map(lc => (
                                     <option key={lc.id} value={lc.id}>
                                       {lc.name}
@@ -2224,9 +2238,10 @@ export function QuotesClient({
                               <TableCell>
                                 <select
                                   className="flex h-8 w-full rounded-md border border-input bg-transparent px-2 py-1 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                                  value={c.additionalCostId ?? 0}
+                                  value={c.additionalCostId ?? ''}
                                   onChange={(e) => updateAdditionalCostId(idx, e.target.value)}
                                 >
+                                  <option value="" disabled>Seleccione concepto...</option>
                                   {additionalCosts.map(ac => (
                                     <option key={ac.id} value={ac.id}>
                                       {ac.name}
