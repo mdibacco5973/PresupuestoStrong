@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Plus, Pencil, Trash2, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, Package, Layers, DollarSign, Image as ImageIcon, X, Copy } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -40,6 +40,14 @@ export function FurnitureClient({ initialItems, parts, extraParts, costs, laborC
   const [editingItem, setEditingItem] = useState<any | null>(null)
   const [isPending, setIsPending] = useState(false)
   const [activeTab, setActiveTab] = useState<'basic' | 'parts' | 'extra' | 'costs' | 'labor' | 'additional'>('basic')
+
+  // Listas ordenadas alfabéticamente para los combos
+  const sortedParts = useMemo(() => [...parts].sort((a, b) => a.name.localeCompare(b.name)), [parts])
+  const sortedExtraParts = useMemo(() => [...extraParts].sort((a, b) => a.name.localeCompare(b.name)), [extraParts])
+  const sortedCosts = useMemo(() => [...costs].sort((a, b) => a.name.localeCompare(b.name)), [costs])
+  const sortedLaborCosts = useMemo(() => [...laborCosts].sort((a, b) => a.name.localeCompare(b.name)), [laborCosts])
+  const sortedAdditionalCosts = useMemo(() => [...additionalCosts].sort((a, b) => a.name.localeCompare(b.name)), [additionalCosts])
+  const sortedWoods = useMemo(() => [...woods].sort((a, b) => a.name.localeCompare(b.name)), [woods])
   
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
@@ -724,7 +732,7 @@ export function FurnitureClient({ initialItems, parts, extraParts, costs, laborC
                                 value={p.idPart} 
                                 onChange={e => updatePartConfig(idx, 'idPart', e.target.value)}
                               >
-                                {parts.map(part => {
+                                {sortedParts.map((part: any) => {
                                   const isSelected = formData.parts.some((p2, i2) => i2 !== idx && p2.idPart === part.id)
                                   return <option key={part.id} value={part.id} disabled={isSelected}>{part.name}</option>
                                 })}
@@ -859,7 +867,7 @@ export function FurnitureClient({ initialItems, parts, extraParts, costs, laborC
                                 value={ep.idPartExtra} 
                                 onChange={e => updateExtraConfig(idx, 'idPartExtra', e.target.value)}
                               >
-                                {extraParts.map(item => {
+                                {sortedExtraParts.map((item: any) => {
                                   const isSelected = formData.extraParts.some((p2, i2) => i2 !== idx && p2.idPartExtra === item.id)
                                   return <option key={item.id} value={item.id} disabled={isSelected}>{item.name}</option>
                                 })}
@@ -928,7 +936,7 @@ export function FurnitureClient({ initialItems, parts, extraParts, costs, laborC
                                 value={c.idCost} 
                                 onChange={e => updateCostConfig(idx, 'idCost', e.target.value)}
                               >
-                                {costs.map(item => {
+                                {sortedCosts.map((item: any) => {
                                   const isSelected = formData.costs.some((c2, i2) => i2 !== idx && c2.idCost === item.id)
                                   return <option key={item.id} value={item.id} disabled={isSelected}>{item.name}</option>
                                 })}
@@ -997,7 +1005,7 @@ export function FurnitureClient({ initialItems, parts, extraParts, costs, laborC
                                 value={l.idLaborCost} 
                                 onChange={e => updateLaborCostConfig(idx, 'idLaborCost', e.target.value)}
                               >
-                                {laborCosts.map(item => {
+                                {sortedLaborCosts.map((item: any) => {
                                   const isSelected = formData.laborCosts.some((l2, i2) => i2 !== idx && l2.idLaborCost === item.id)
                                   return <option key={item.id} value={item.id} disabled={isSelected}>{item.name}</option>
                                 })}
@@ -1077,7 +1085,7 @@ export function FurnitureClient({ initialItems, parts, extraParts, costs, laborC
                                 value={a.idAdditionalCosts} 
                                 onChange={e => updateAdditionalCostConfig(idx, 'idAdditionalCosts', e.target.value)}
                               >
-                                {additionalCosts.map(item => {
+                                {sortedAdditionalCosts.map((item: any) => {
                                   const isSelected = formData.additionalCosts.some((a2, i2) => i2 !== idx && a2.idAdditionalCosts === item.id)
                                   return <option key={item.id} value={item.id} disabled={isSelected}>{item.name}</option>
                                 })}
