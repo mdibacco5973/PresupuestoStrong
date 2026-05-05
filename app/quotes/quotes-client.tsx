@@ -98,6 +98,7 @@ type QuoteFinish = {
   finishId: string | number
   furnitureId: string | number
   quantity?: number | null
+  faces: number
   totalPrice?: number | null
 }
 
@@ -572,6 +573,7 @@ export function QuotesClient({
         finishId: f.finishId ?? null,
         furnitureId: f.furnitureId,
         quantity: f.quantity ?? 1,
+        faces: f.faces || 1,
         totalPrice: f.totalPrice ?? 0
       })),
       labor: (quote.labor || []).map(l => ({
@@ -1140,14 +1142,16 @@ export function QuotesClient({
             // Otros acabados sumamos sus cantidades (por defecto 1 por mueble * cantidad de muebles)
             existing.quantity = Number(existing.quantity || 0) + (Number(c.quantity || 1) * detail.quantity)
           }
-          existing.totalPrice = Number(existing.quantity) * unitPrice
+          existing.faces = c.faces || 1
+          existing.totalPrice = Number(existing.quantity) * unitPrice * Number(existing.faces)
         } else {
           const qty = isLaqueado ? totalFrontSurface : (Number(c.quantity || 1) * detail.quantity)
           finishMap.set(finishId, {
             finishId: c.cost.id,
             furnitureId: furniture.id,
             quantity: qty,
-            totalPrice: qty * unitPrice
+            faces: c.faces || 1,
+            totalPrice: qty * unitPrice * (c.faces || 1)
           })
         }
       })
@@ -1269,12 +1273,16 @@ export function QuotesClient({
         } else {
           existing.quantity = Number(existing.quantity || 0) + Number(f.quantity || 0)
         }
-        existing.totalPrice = Number(existing.quantity) * Number(finishData?.price || 0)
+        existing.faces = f.faces || 1
+        existing.totalPrice = Number(existing.quantity) * Number(finishData?.price || 0) * Number(existing.faces)
         if (existing.furnitureId && f.furnitureId && existing.furnitureId.toString() !== f.furnitureId.toString()) {
           existing.furnitureId = null as unknown as string
         }
       } else {
-        map.set(key, { ...f })
+        const qty = f.quantity || 1
+        const faces = f.faces || 1
+        const unitPrice = Number(finishData?.price || 0)
+        map.set(key, { ...f, quantity: qty, faces: faces, totalPrice: qty * unitPrice * faces })
       }
     })
     return Array.from(map.values())
@@ -1348,6 +1356,7 @@ export function QuotesClient({
       finishId: '', 
       furnitureId: '',
       quantity: 1,
+      faces: 1,
       totalPrice: 0
     }
     
@@ -1467,7 +1476,7 @@ export function QuotesClient({
     
     setFormData(prev => {
       const newFinishes = [...prev.finishes]
-      newFinishes[index] = { ...newFinishes[index], finishId, quantity: qty, totalPrice: unitPrice * qty }
+      newFinishes[index] = { ...newFinishes[index], finishId, quantity: qty, faces: 1, totalPrice: unitPrice * qty }
       return { ...prev, finishes: mergeFinishes(newFinishes) }
     })
   }
@@ -2034,6 +2043,7 @@ export function QuotesClient({
                           <TableHead>Acabado</TableHead>
                           <TableHead>Mueble Relacionado</TableHead>
                           <TableHead className="w-20 text-center">Cant.</TableHead>
+                          <TableHead className="w-20 text-center">Caras</TableHead>
                           <TableHead className="w-24 text-right">Precio Unit.</TableHead>
                           <TableHead className="w-24 text-right">Precio Total</TableHead>
                           <TableHead className="w-10"></TableHead>
@@ -2073,9 +2083,24 @@ export function QuotesClient({
                                   onChange={e => {
                                     const qty = parseFloat(e.target.value) || 0
                                     const unitPrice = finishData ? Number(finishData.price) : 0
-                                    updateFinish(idx, { quantity: qty, totalPrice: qty * unitPrice })
+                                    updateFinish(idx, { quantity: qty, totalPrice: qty * unitPrice * (f.faces || 1) })
                                   }} 
                                 />
+                              </TableCell>
+                              <TableCell>
+                                <select
+                                  className="flex h-8 w-full rounded-md border border-input bg-transparent px-2 py-1 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 text-center font-bold"
+                                  value={f.faces || 1}
+                                  onChange={(e) => {
+                                    const faces = parseInt(e.target.value) || 1
+                                    const unitPrice = finishData ? Number(finishData.price) : 0
+                                    const qty = f.quantity || 1
+                                    updateFinish(idx, { faces, totalPrice: qty * unitPrice * faces })
+                                  }}
+                                >
+                                  <option value={1}>1</option>
+                                  <option value={2}>2</option>
+                                </select>
                               </TableCell>
                               <TableCell className="text-sm text-right font-mono">
                                 {finishData ? formatCurrency(Number(finishData.price)) : '-'}

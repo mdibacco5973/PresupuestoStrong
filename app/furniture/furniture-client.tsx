@@ -137,6 +137,7 @@ export function FurnitureClient({ initialItems, parts, extraParts, costs, laborC
       costs: item.costs.map((c: any) => ({
         idCost: c.idCost,
         quantity: c.quantity,
+        faces: c.faces || 1,
       })),
       laborCosts: item.laborCosts ? item.laborCosts.map((l: any) => ({
         idLaborCost: l.idLaborCost,
@@ -316,7 +317,7 @@ export function FurnitureClient({ initialItems, parts, extraParts, costs, laborC
     
     const totalCosts = formData.costs.reduce((acc, c) => {
       const cost = costs.find(item => item.id === c.idCost)
-      return acc + (cost ? Number(cost.price) * c.quantity : 0)
+      return acc + (cost ? Number(cost.price) * c.quantity * (c.faces || 1) : 0)
     }, 0)
 
     // Calcular longitud de filos (mm)
@@ -455,7 +456,7 @@ export function FurnitureClient({ initialItems, parts, extraParts, costs, laborC
   const addCostConfig = () => {
     setFormData({
       ...formData,
-      costs: [...formData.costs, { idCost: '', quantity: 1 }]
+      costs: [...formData.costs, { idCost: '', quantity: 1, faces: 1 }]
     })
   }
 
@@ -912,6 +913,7 @@ export function FurnitureClient({ initialItems, parts, extraParts, costs, laborC
                         <TableRow>
                           <TableHead>Concepto</TableHead>
                           <TableHead className="w-24">Cant.</TableHead>
+                          <TableHead className="w-20">Caras</TableHead>
                           <TableHead>Precio Unit.</TableHead>
                           <TableHead>Subtotal</TableHead>
                           <TableHead className="w-10"></TableHead>
@@ -934,9 +936,19 @@ export function FurnitureClient({ initialItems, parts, extraParts, costs, laborC
                               </select>
                             </TableCell>
                             <TableCell>
-                              <Input type="number" className="h-8" value={c.quantity} onChange={e => updateCostConfig(idx, 'quantity', parseFloat(e.target.value) || 1)} step="0.01" />
+                              <Input type="number" className="h-8 text-center" value={c.quantity} onChange={e => updateCostConfig(idx, 'quantity', parseFloat(e.target.value) || 1)} step="0.01" />
                             </TableCell>
-                            <TableCell className="text-xs font-medium text-primary">
+                            <TableCell>
+                              <select
+                                className="flex h-8 w-full rounded-md border border-input bg-transparent px-2 py-1 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 text-center font-bold"
+                                value={c.faces || 1}
+                                onChange={(e) => updateCostConfig(idx, 'faces' as any, parseInt(e.target.value) || 1)}
+                              >
+                                <option value={1}>1</option>
+                                <option value={2}>2</option>
+                              </select>
+                            </TableCell>
+                                  <TableCell className="text-xs font-medium text-primary">
                               {(() => {
                                 const item = costs.find(i => i.id === c.idCost)
                                 return item ? formatCurrency(Number(item.price)) : '-'
@@ -945,7 +957,7 @@ export function FurnitureClient({ initialItems, parts, extraParts, costs, laborC
                             <TableCell className="text-xs font-bold text-primary">
                               {(() => {
                                 const item = costs.find(i => i.id === c.idCost)
-                                return item ? formatCurrency(Number(item.price) * c.quantity) : '-'
+                                return item ? formatCurrency(Number(item.price) * c.quantity * (c.faces || 1)) : '-'
                               })()}
                             </TableCell>
                             <TableCell>

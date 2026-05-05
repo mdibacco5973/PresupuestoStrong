@@ -587,6 +587,7 @@ model QuoteFinish {
   finishId    BigInt?  @map("IdFinishes")
   furnitureId BigInt?  @map("IdFurniture")
   quantity    Decimal? @map("Quantity") @db.Decimal(10, 2)
+  faces       Int      @default(1) @map("Faces")
   totalPrice  Decimal? @map("TotalPrice") @db.Decimal(10, 2)
 
   quote       Quote?    @relation(fields: [quoteId], references: [id], onDelete: Cascade)
@@ -695,6 +696,7 @@ model FurnitureCostConfig {
   idFurniture BigInt @map("IdFurniture")
   idCost      BigInt @map("IdCosts")
   quantity    Int @map("Quantity")
+  faces       Int @default(1) @map("Faces")
 
   furniture Furniture @relation(fields: [idFurniture], references: [id], onDelete: Cascade)
   cost      Cost      @relation(fields: [idCost], references: [id])

@@ -22,6 +22,7 @@ export type FurnitureExtraConfigInput = {
 export type FurnitureCostConfigInput = {
   idCost: number | string
   quantity: number
+  faces: number
 }
 
 export type FurnitureLaborCostConfigInput = {
@@ -101,6 +102,7 @@ function serializeFurniture(item: any) {
       idFurniture: c.idFurniture.toString(),
       idCost: c.idCost.toString(),
       quantity: Number(c.quantity),
+      faces: Number(c.faces || 1),
       cost: c.cost ? {
         id: c.cost.id.toString(),
         name: c.cost.name,
@@ -188,6 +190,7 @@ export async function createFurniture(data: FurnitureInput) {
           create: data.costs.map(c => ({
             cost: { connect: { id: BigInt(c.idCost) } },
             quantity: c.quantity,
+            faces: c.faces || 1,
           })),
         },
         laborCosts: {
@@ -270,6 +273,7 @@ export async function updateFurniture(id: string | number, data: FurnitureInput)
             create: data.costs.map(c => ({
               cost: { connect: { id: BigInt(c.idCost) } },
               quantity: c.quantity,
+              faces: c.faces || 1,
             })),
           },
           laborCosts: {
@@ -366,6 +370,7 @@ export async function duplicateFurniture(id: string | number) {
           create: original.costs.map(c => ({
             idCost: c.idCost,
             quantity: c.quantity,
+            faces: c.faces || 1,
           }))
         },
         laborCosts: {

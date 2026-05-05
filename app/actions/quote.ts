@@ -58,6 +58,7 @@ export type QuoteFinishInput = {
   finishId: number | string | null
   furnitureId: number | string
   quantity: number | null
+  faces: number
   totalPrice: number | null
 }
 
@@ -200,6 +201,7 @@ function serializeQuote(quote: any) {
       finishId: f.finishId?.toString(),
       furnitureId: f.furnitureId?.toString(),
       quantity: f.quantity ? Number(f.quantity) : null,
+      faces: Number(f.faces || 1),
       totalPrice: f.totalPrice ? Number(f.totalPrice) : null,
       finish: f.finish ? {
         id: f.finish.id.toString(),
@@ -329,6 +331,7 @@ export async function createQuote(data: QuoteInput) {
           finish: f.finishId ? { connect: { id: BigInt(f.finishId) } } : undefined,
           furniture: f.furnitureId ? { connect: { id: BigInt(f.furnitureId) } } : undefined,
           quantity: f.quantity,
+          faces: f.faces || 1,
           totalPrice: f.totalPrice,
         }))
       },
@@ -440,6 +443,7 @@ export async function updateQuote(id: string, data: QuoteInput) {
             finish: f.finishId ? { connect: { id: BigInt(f.finishId) } } : undefined,
             furniture: f.furnitureId ? { connect: { id: BigInt(f.furnitureId) } } : undefined,
             quantity: f.quantity,
+            faces: f.faces || 1,
             totalPrice: f.totalPrice,
           }))
         },
@@ -524,6 +528,7 @@ export async function duplicateQuote(id: string) {
       finishId: f.finishId,
       furnitureId: f.furnitureId,
       quantity: f.quantity,
+      faces: f.faces || 1,
       totalPrice: f.totalPrice
     })),
     labor: source.labor.map((l: any) => ({
