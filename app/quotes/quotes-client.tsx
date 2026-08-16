@@ -60,6 +60,7 @@ type QuotePart = {
   furnitureId: string | number
   woodId: string | number
   grain: string | null
+  edgeSize?: number | null
 }
 
 type QuoteWood = {
@@ -251,6 +252,9 @@ export function QuotesClient({
     if (!furniture) return detail.unitPrice
 
     let partsPriceTotal = 0
+    let totalEdge04Meters = 0
+    let totalEdge2Meters = 0
+    let pieceCount = 0
     
     if (furniture.parts) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -259,8 +263,6 @@ export function QuotesClient({
         if (!partDef) return
         
         // Buscar madera asignada a esta pieza para este mueble específico
-        // Nota: En la solapa de piezas, las piezas están agrupadas o individuales
-        // Si están individuales, buscamos por furnitureId y partId
         const assignment = currentParts.find(qp => 
           qp.furnitureId?.toString() === detail.furnitureId.toString() && 
           qp.partId?.toString() === partDef.id.toString()
@@ -285,11 +287,72 @@ export function QuotesClient({
         const pricePerM2 = boardSurfaceM2 > 0 ? Number(wood.price) / boardSurfaceM2 : 0
         
         partsPriceTotal += surfaceM2 * pricePerM2
+
+        // Medir longitud de filos de esta pieza
+        let pieceEdgeLength = 0
+        if (p.edges1) pieceEdgeLength += length
+        if (p.edges2) pieceEdgeLength += length
+        if (p.edges3) pieceEdgeLength += width
+        if (p.edges4) pieceEdgeLength += width
+
+        const edgeSize = (assignment && assignment.edgeSize !== undefined && assignment.edgeSize !== null)
+          ? Number(assignment.edgeSize)
+          : (p.edgeSize !== undefined && p.edgeSize !== null ? Number(p.edgeSize) : (partDef.isFront ? 2 : 0.4))
+
+        const meters = (pieceEdgeLength / 1000) * quantity
+        if (edgeSize >= 2) {
+          totalEdge2Meters += meters
+        } else if (edgeSize > 0) {
+          totalEdge04Meters += meters
+        }
+        pieceCount += quantity
       })
     }
+
+    // Precios de referencia para filo fino (0.4mm) y filo ancho/caro (2.0mm)
+    const thickLabor = laborCosts.find(lc => {
+      const n = (lc.name || '').toUpperCase()
+      return (n.includes('FILO') || n.includes('PEGADO')) && (n.includes('2') || n.includes('ANCHO') || n.includes('GRUESO'))
+    })
+    const thinLabor = laborCosts.find(lc => {
+      const n = (lc.name || '').toUpperCase()
+      return (n.includes('FILO') || n.includes('PEGADO')) && (n.includes('0.4') || n.includes('FINO') || n.includes('ESTANDAR'))
+    }) || laborCosts.find(lc => {
+      const n = (lc.name || '').toUpperCase()
+      return n.includes('FILO') || n.includes('PEGADO')
+    })
+
+    const thinLaborPrice = thinLabor ? Number(thinLabor.price || 0) : 0
+    // Si no hay filo de 2mm creado en mano de obra, se usa el doble del filo fino como valor de filo caro por defecto
+    const thickLaborPrice = thickLabor ? Number(thickLabor.price || 0) : (thinLaborPrice > 0 ? thinLaborPrice * 2 : 0)
+
+    // Calcular Mano de Obra del mueble (Corte, Armado, etc. + Filos reales calculados)
+    let dynamicLaborPrice = 0
+    if (furniture.laborCosts && furniture.laborCosts.length > 0) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      furniture.laborCosts.forEach((l: any) => {
+        const labor = l.laborCost || laborCosts.find(lc => lc.id?.toString() === (l.idLaborCost || l.laborId)?.toString())
+        if (!labor) return
+        const laborName = (labor.name || '').toUpperCase()
+        const unitPrice = Number(labor.price || 0)
+        let qty = Number(l.quantity || 1)
+
+        // Los filos se calculan abajo sumando los metros reales de filo fino y filo ancho
+        if (laborName.includes('FILO') || laborName.includes('PEGADO')) {
+          return
+        } else if (laborName.includes('CORTE')) {
+          qty = pieceCount
+        }
+
+        dynamicLaborPrice += qty * unitPrice
+      })
+    }
+
+    // Sumar siempre los filos reales: filo 0.4mm (barato) y filo 2.0mm (caro)
+    dynamicLaborPrice += (totalEdge04Meters * thinLaborPrice) + (totalEdge2Meters * thickLaborPrice)
     
-    // Sumar el resto de los costos fijos del mueble (herrajes, extras, mano de obra, etc.)
-    return partsPriceTotal + (furniture.hardwarePrice || 0) + (furniture.costPrice || 0) + (furniture.laborPrice || 0) + (furniture.additionalPrice || 0)
+    // Sumar costos (piezas con madera, herrajes, costos/terminaciones, mano de obra dinámica, extras)
+    return partsPriceTotal + (furniture.hardwarePrice || 0) + (furniture.costPrice || 0) + dynamicLaborPrice + (furniture.additionalPrice || 0)
   }
 
   const woodStatsArray = useMemo(() => {
@@ -348,9 +411,13 @@ export function QuotesClient({
           if (p.edges3) pieceEdgeLength += w
           if (p.edges4) pieceEdgeLength += w
 
-          if (p.edgeSize === 2) {
+          const currentEdgeSize = (partAssignment && partAssignment.edgeSize !== undefined && partAssignment.edgeSize !== null)
+            ? Number(partAssignment.edgeSize)
+            : (p.edgeSize !== undefined && p.edgeSize !== null ? Number(p.edgeSize) : (partData.isFront ? 2 : 0.4))
+
+          if (currentEdgeSize >= 2) {
              stats.edges2Length += (pieceEdgeLength / 1000) * quantity
-          } else if (p.edgeSize === 0.4 || p.edgeSize === 0) {
+          } else if (currentEdgeSize > 0) {
              stats.edges04Length += (pieceEdgeLength / 1000) * quantity
           }
         }
@@ -552,13 +619,20 @@ export function QuotesClient({
         quantity: c.quantity ?? 1,
         totalPrice: c.totalPrice ?? 0
       })),
-      parts: (quote.parts || []).map(p => ({
-        id: p.id,
-        partId: p.partId ?? null,
-        furnitureId: p.furnitureId,
-        woodId: p.woodId,
-        grain: p.grain ?? 'Ninguna'
-      })),
+      parts: (quote.parts || []).map(p => {
+        const fur = furnitures.find(f => f.id?.toString() === p.furnitureId?.toString())
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const furPart = fur?.parts?.find((fp: any) => fp.part?.id?.toString() === p.partId?.toString())
+        const defaultEdge = furPart?.edgeSize !== undefined && furPart?.edgeSize !== null ? Number(furPart.edgeSize) : (furPart?.part?.isFront ? 2 : 0.4)
+        return {
+          id: p.id,
+          partId: p.partId ?? null,
+          furnitureId: p.furnitureId,
+          woodId: p.woodId,
+          grain: p.grain ?? 'Ninguna',
+          edgeSize: p.edgeSize !== undefined && p.edgeSize !== null ? Number(p.edgeSize) : defaultEdge
+        }
+      }),
       hardware: (quote.hardware || []).map(hw => ({
         id: hw.id,
         hardwareId: hw.hardwareId,
@@ -1028,13 +1102,178 @@ export function QuotesClient({
   }
 */
 
+  const recalculateLaborFromParts = (
+    details: QuoteDetailInput[],
+    quoteParts: QuotePartInput[],
+    currentLabor: QuoteLaborInput[]
+  ) => {
+    const thickLabor = laborCosts.find(lc => {
+      const n = (lc.name || '').toUpperCase()
+      return (n.includes('FILO') || n.includes('PEGADO')) && (n.includes('2') || n.includes('ANCHO') || n.includes('GRUESO'))
+    })
+    const thinLabor = laborCosts.find(lc => {
+      const n = (lc.name || '').toUpperCase()
+      return (n.includes('FILO') || n.includes('PEGADO')) && (n.includes('0.4') || n.includes('FINO') || n.includes('ESTANDAR'))
+    }) || laborCosts.find(lc => {
+      const n = (lc.name || '').toUpperCase()
+      return n.includes('FILO') || n.includes('PEGADO')
+    })
+
+    const thinPrice = thinLabor ? Number(thinLabor.price || 0) : 0
+    const thickPrice = thickLabor ? Number(thickLabor.price || 0) : (thinPrice > 0 ? thinPrice * 2 : 0)
+
+    const furnitureStats = new Map<string, { edge04: number; edge2: number; totalPieces: number }>()
+
+    details.forEach(detail => {
+      const furniture = furnitures.find(f => f.id?.toString() === detail.furnitureId?.toString())
+      if (!furniture || !furniture.parts) return
+
+      let edge04 = 0
+      let edge2 = 0
+      let totalPieces = 0
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      furniture.parts.forEach((p: any) => {
+        const partDef = p.part
+        if (!partDef) return
+
+        const assignment = quoteParts.find(qp => 
+          qp.furnitureId?.toString() === detail.furnitureId?.toString() && 
+          qp.partId?.toString() === partDef.id?.toString()
+        )
+
+        const wood = woods.find(w => w.id?.toString() === assignment?.woodId?.toString()) || defaultWood
+        const thickness = wood ? Number(wood.thickness) : 18
+
+        const context = {
+          L: Number(detail.length),
+          A: Number(detail.width),
+          P: Number(detail.depth),
+          E: thickness
+        }
+
+        const l = evaluateFormula(partDef.formulaLength, context)
+        const w = evaluateFormula(partDef.formulaWidth, context)
+
+        if (l > 0 && w > 0) {
+          const qty = Number(p.quantity || 1) * Number(detail.quantity || 1)
+          totalPieces += qty
+
+          let pieceEdgeLength = 0
+          if (p.edges1) pieceEdgeLength += l
+          if (p.edges2) pieceEdgeLength += l
+          if (p.edges3) pieceEdgeLength += w
+          if (p.edges4) pieceEdgeLength += w
+
+          const edgeSize = (assignment && assignment.edgeSize !== undefined && assignment.edgeSize !== null)
+            ? Number(assignment.edgeSize)
+            : (p.edgeSize !== undefined && p.edgeSize !== null ? Number(p.edgeSize) : (partDef.isFront ? 2 : 0.4))
+
+          const meters = (pieceEdgeLength / 1000) * qty
+
+          if (edgeSize >= 2) {
+            edge2 += meters
+          } else if (edgeSize > 0) {
+            edge04 += meters
+          }
+        }
+      })
+
+      furnitureStats.set(detail.furnitureId.toString(), {
+        edge04: Number(edge04.toFixed(2)),
+        edge2: Number(edge2.toFixed(2)),
+        totalPieces
+      })
+    })
+
+    const laborMap = new Map<string, QuoteLaborInput>()
+
+    // Preservar y actualizar filas existentes
+    currentLabor.forEach(l => {
+      const laborData = laborCosts.find(lc => lc.id?.toString() === l.laborId?.toString())
+      if (!laborData) return
+
+      const name = (laborData.name || '').toUpperCase()
+      const isFilo = name.includes('FILO') || name.includes('PEGADO')
+      const isCorte = name.includes('CORTE')
+      const unitPrice = Number(laborData.price || 0)
+
+      let newQty = Number(l.quantity || 0)
+      if (l.furnitureId) {
+        const stats = furnitureStats.get(l.furnitureId.toString())
+        if (stats) {
+          if (isFilo) {
+            if (name.includes('2') || name.includes('ANCHO') || name.includes('GRUESO')) {
+              newQty = stats.edge2
+            } else {
+              newQty = stats.edge04
+            }
+          } else if (isCorte) {
+            newQty = stats.totalPieces
+          }
+        }
+      }
+
+      const key = `${l.laborId}-${l.furnitureId || 'global'}`
+      laborMap.set(key, {
+        ...l,
+        quantity: newQty,
+        totalPrice: Number((newQty * unitPrice).toFixed(2))
+      })
+    })
+
+    // Asegurar filas de filo fino y filo grueso para cada mueble
+    details.forEach(detail => {
+      const stats = furnitureStats.get(detail.furnitureId.toString())
+      if (!stats) return
+
+      if (stats.edge04 > 0 && thinLabor) {
+        const key = `${thinLabor.id}-${detail.furnitureId}`
+        if (laborMap.has(key)) {
+          const item = laborMap.get(key)!
+          item.quantity = stats.edge04
+          item.totalPrice = Number((stats.edge04 * Number(thinLabor.price || 0)).toFixed(2))
+        } else {
+          laborMap.set(key, {
+            laborId: thinLabor.id,
+            furnitureId: detail.furnitureId,
+            quantity: stats.edge04,
+            totalPrice: Number((stats.edge04 * Number(thinLabor.price || 0)).toFixed(2))
+          })
+        }
+      }
+
+      if (stats.edge2 > 0) {
+        const targetThickLabor = thickLabor || thinLabor
+        if (targetThickLabor) {
+          const key = `${targetThickLabor.id}-${detail.furnitureId}`
+          if (laborMap.has(key)) {
+            const item = laborMap.get(key)!
+            item.quantity = stats.edge2
+            item.totalPrice = Number((stats.edge2 * thickPrice).toFixed(2))
+          } else {
+            laborMap.set(key, {
+              laborId: targetThickLabor.id,
+              furnitureId: detail.furnitureId,
+              quantity: stats.edge2,
+              totalPrice: Number((stats.edge2 * thickPrice).toFixed(2))
+            })
+          }
+        }
+      }
+    })
+
+    return Array.from(laborMap.values())
+  }
+
   const updatePart = (index: number, updates: Partial<QuotePartInput>) => {
     const newParts = [...formData.parts]
     newParts[index] = { ...newParts[index], ...updates }
     
-    // Al cambiar la madera de una pieza, recalculamos los precios de los muebles
+    // Al cambiar la madera o filo de una pieza, recalculamos los precios de los muebles y mano de obra
     const updatedDetails = recalculatePrices(formData.details, newParts)
-    setFormData({ ...formData, parts: newParts, details: updatedDetails })
+    const updatedLabor = recalculateLaborFromParts(formData.details, newParts, formData.labor)
+    setFormData({ ...formData, parts: newParts, details: updatedDetails, labor: updatedLabor })
   }
 
   const syncParts = () => {
@@ -1058,18 +1297,22 @@ export function QuotesClient({
           woodId = woods.find(w => w.isDefaultWood && w.isCabinet)?.id || woods.find(w => w.isCabinet)?.id || woodId
         }
 
+        const defaultEdge = p.edgeSize !== undefined && p.edgeSize !== null ? Number(p.edgeSize) : (partData.isFront ? 2 : 0.4)
+
         newParts.push({
           partId: partData.id,
           furnitureId: furniture.id,
           woodId: woodId || 0,
-          grain: p.grain || 'Ninguna'
+          grain: p.grain || 'Ninguna',
+          edgeSize: defaultEdge
         })
       })
     })
 
-    // Al sincronizar piezas, recalculamos los precios de los muebles
+    // Al sincronizar piezas, recalculamos los precios de los muebles y mano de obra
     const updatedDetails = recalculatePrices(formData.details, newParts)
-    setFormData(prev => ({ ...prev, parts: newParts, details: updatedDetails }))
+    const updatedLabor = recalculateLaborFromParts(formData.details, newParts, formData.labor)
+    setFormData(prev => ({ ...prev, parts: newParts, details: updatedDetails, labor: updatedLabor }))
   }
 
   const syncHardware = () => {
@@ -1161,34 +1404,141 @@ export function QuotesClient({
   }
 
   const syncLabor = () => {
+    const thickLabor = laborCosts.find(lc => {
+      const n = (lc.name || '').toUpperCase()
+      return (n.includes('FILO') || n.includes('PEGADO')) && (n.includes('2') || n.includes('ANCHO') || n.includes('GRUESO'))
+    })
+    const thinLabor = laborCosts.find(lc => {
+      const n = (lc.name || '').toUpperCase()
+      return (n.includes('FILO') || n.includes('PEGADO')) && (n.includes('0.4') || n.includes('FINO') || n.includes('ESTANDAR'))
+    }) || laborCosts.find(lc => {
+      const n = (lc.name || '').toUpperCase()
+      return n.includes('FILO') || n.includes('PEGADO')
+    })
+
+    const thinPrice = thinLabor ? Number(thinLabor.price || 0) : 0
+    const thickPrice = thickLabor ? Number(thickLabor.price || 0) : (thinPrice > 0 ? thinPrice * 2 : 0)
+
     const laborMap = new Map<string, QuoteLaborInput>()
     
     formData.details.forEach(detail => {
-      const furniture = furnitures.find(f => f.id === detail.furnitureId)
-      if (!furniture || !furniture.laborCosts) return
+      const furniture = furnitures.find(f => f.id?.toString() === detail.furnitureId?.toString())
+      if (!furniture) return
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      furniture.laborCosts.forEach((l: any) => {
-        if (!l.laborCost) return
+      let edge04 = 0
+      let edge2 = 0
+      let totalPieces = 0
 
-        const laborId = l.laborCost.id.toString()
-        const laborQty = Number(l.quantity || 1)
-        const totalQty = laborQty * detail.quantity
-        const unitPrice = Number(l.laborCost.price || 0)
+      if (furniture.parts) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        furniture.parts.forEach((p: any) => {
+          const partDef = p.part
+          if (!partDef) return
 
-        if (laborMap.has(laborId)) {
-          const existing = laborMap.get(laborId)!
-          existing.quantity = Number(existing.quantity || 0) + totalQty
-          existing.totalPrice = Number(existing.quantity) * unitPrice
-        } else {
-          laborMap.set(laborId, {
+          const assignment = formData.parts.find(qp => 
+            qp.furnitureId?.toString() === detail.furnitureId?.toString() && 
+            qp.partId?.toString() === partDef.id?.toString()
+          )
+
+          const wood = woods.find(w => w.id?.toString() === assignment?.woodId?.toString()) || defaultWood
+          const thickness = wood ? Number(wood.thickness) : 18
+
+          const context = {
+            L: Number(detail.length),
+            A: Number(detail.width),
+            P: Number(detail.depth),
+            E: thickness
+          }
+
+          const l = evaluateFormula(partDef.formulaLength, context)
+          const w = evaluateFormula(partDef.formulaWidth, context)
+
+          if (l > 0 && w > 0) {
+            const qty = Number(p.quantity || 1) * Number(detail.quantity || 1)
+            totalPieces += qty
+
+            let pieceEdgeLength = 0
+            if (p.edges1) pieceEdgeLength += l
+            if (p.edges2) pieceEdgeLength += l
+            if (p.edges3) pieceEdgeLength += w
+            if (p.edges4) pieceEdgeLength += w
+
+            const edgeSize = (assignment && assignment.edgeSize !== undefined && assignment.edgeSize !== null)
+              ? Number(assignment.edgeSize)
+              : (p.edgeSize !== undefined && p.edgeSize !== null ? Number(p.edgeSize) : (partDef.isFront ? 2 : 0.4))
+
+            const meters = (pieceEdgeLength / 1000) * qty
+
+            if (edgeSize >= 2) {
+              edge2 += meters
+            } else if (edgeSize > 0) {
+              edge04 += meters
+            }
+          }
+        })
+      }
+
+      if (furniture.laborCosts) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        furniture.laborCosts.forEach((l: any) => {
+          if (!l.laborCost) return
+
+          const laborId = l.laborCost.id.toString()
+          const laborName = (l.laborCost.name || '').toUpperCase()
+          const unitPrice = Number(l.laborCost.price || 0)
+
+          let totalQty = Number(l.quantity || 1) * detail.quantity
+
+          if (laborName.includes('FILO') || laborName.includes('PEGADO')) {
+            if (laborName.includes('2') || laborName.includes('ANCHO') || laborName.includes('GRUESO')) {
+              totalQty = Number(edge2.toFixed(2))
+            } else if (laborName.includes('0.4') || laborName.includes('FINO') || laborName.includes('ESTANDAR')) {
+              totalQty = Number(edge04.toFixed(2))
+            } else {
+              totalQty = Number(edge04.toFixed(2))
+            }
+          } else if (laborName.includes('CORTE')) {
+            totalQty = totalPieces
+          }
+
+          const mapKey = `${laborId}-${furniture.id}`
+          laborMap.set(mapKey, {
             laborId: l.laborCost.id,
             furnitureId: furniture.id,
-            quantity: totalQty,
-            totalPrice: totalQty * unitPrice
+            quantity: Number(totalQty.toFixed(2)),
+            totalPrice: Number((totalQty * unitPrice).toFixed(2))
+          })
+        })
+      }
+
+      // Filo fino
+      if (edge04 > 0 && thinLabor) {
+        const key = `${thinLabor.id}-${furniture.id}`
+        if (!laborMap.has(key)) {
+          laborMap.set(key, {
+            laborId: thinLabor.id,
+            furnitureId: furniture.id,
+            quantity: Number(edge04.toFixed(2)),
+            totalPrice: Number((edge04 * thinPrice).toFixed(2))
           })
         }
-      })
+      }
+
+      // Filo ancho
+      if (edge2 > 0) {
+        const targetThickLabor = thickLabor || thinLabor
+        if (targetThickLabor) {
+          const key = `${targetThickLabor.id}-${furniture.id}`
+          if (!laborMap.has(key)) {
+            laborMap.set(key, {
+              laborId: targetThickLabor.id,
+              furnitureId: furniture.id,
+              quantity: Number(edge2.toFixed(2)),
+              totalPrice: Number((edge2 * thickPrice).toFixed(2))
+            })
+          }
+        }
+      }
     })
 
     setFormData(prev => ({ ...prev, labor: Array.from(laborMap.values()) }))
@@ -1809,6 +2159,7 @@ export function QuotesClient({
                           <TableHead>Mueble Relacionado</TableHead>
                           <TableHead className="text-center">Medidas (LxA)</TableHead>
                           <TableHead>Madera</TableHead>
+                          <TableHead className="w-36">Espesor Filo</TableHead>
                           <TableHead className="w-32">Veta</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -1857,6 +2208,20 @@ export function QuotesClient({
                               <TableCell>
                                 <select 
                                   className="w-full bg-transparent border-none focus:ring-0 text-sm font-medium"
+                                  value={part.edgeSize !== undefined && part.edgeSize !== null ? part.edgeSize.toString() : '0.4'} 
+                                  onChange={e => {
+                                    const val = parseFloat(e.target.value)
+                                    updatePart(idx, { edgeSize: isNaN(val) ? 0.4 : val })
+                                  }}
+                                >
+                                  <option value="0.4">0.4 mm (Fino)</option>
+                                  <option value="2">2.0 mm (Ancho)</option>
+                                  <option value="0">Sin Filo (0 mm)</option>
+                                </select>
+                              </TableCell>
+                              <TableCell>
+                                <select 
+                                  className="w-full bg-transparent border-none focus:ring-0 text-sm font-medium"
                                   value={part.grain || 'Ninguna'} 
                                   onChange={e => updatePart(idx, { grain: e.target.value })}
                                 >
@@ -1870,7 +2235,7 @@ export function QuotesClient({
                         })}
                         {formData.parts.length === 0 && (
                           <TableRow>
-                            <TableCell colSpan={4} className="text-center py-8 text-muted-foreground text-sm italic">
+                            <TableCell colSpan={6} className="text-center py-8 text-muted-foreground text-sm italic">
                               No hay piezas adicionales en este presupuesto.
                             </TableCell>
                           </TableRow>

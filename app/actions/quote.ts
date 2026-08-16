@@ -43,6 +43,7 @@ export type QuotePartInput = {
   furnitureId: number | string
   woodId: number | string
   grain: string | null
+  edgeSize?: number | null
 }
 
 export type QuoteHardwareInput = {

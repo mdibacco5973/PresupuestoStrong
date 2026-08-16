@@ -320,8 +320,9 @@ export function FurnitureClient({ initialItems, parts, extraParts, costs, laborC
       return acc + (cost ? Number(cost.price) * c.quantity * (c.faces || 1) : 0)
     }, 0)
 
-    // Calcular longitud de filos (mm)
-    let totalEdgeLength = 0
+    // Calcular longitud de filos (mm) por espesor
+    let totalEdge04Length = 0
+    let totalEdge2Length = 0
     let totalPiecesCount = 0
     formData.parts.forEach(p => {
       totalPiecesCount += p.quantity
@@ -337,8 +338,13 @@ export function FurnitureClient({ initialItems, parts, extraParts, costs, laborC
       if (p.edges3) partEdges += w
       if (p.edges4) partEdges += w
       
-      // Convertir mm a metros para el cálculo de mano de obra
-      totalEdgeLength += ((partEdges / 1000) * p.quantity)
+      const meters = ((partEdges / 1000) * p.quantity)
+      const edgeSize = p.edgeSize !== undefined && p.edgeSize !== null ? Number(p.edgeSize) : (partData.isFront ? 2 : 0.4)
+      if (edgeSize >= 2) {
+        totalEdge2Length += meters
+      } else if (edgeSize > 0) {
+        totalEdge04Length += meters
+      }
     })
 
     const totalLabor = formData.laborCosts.reduce((acc, l) => {
@@ -346,9 +352,21 @@ export function FurnitureClient({ initialItems, parts, extraParts, costs, laborC
       if (!labor) return acc
       
       let qty = l.quantity
-      if (labor.name.toUpperCase().includes('FILO') || labor.name.toUpperCase().includes('PEGADO')) {
-        qty = totalEdgeLength
-      } else if (labor.name.toUpperCase().includes('CORTE')) {
+      const laborName = labor.name.toUpperCase()
+      if (laborName.includes('FILO') || laborName.includes('PEGADO')) {
+        if (laborName.includes('2') || laborName.includes('ANCHO') || laborName.includes('GRUESO')) {
+          qty = totalEdge2Length
+        } else if (laborName.includes('0.4') || laborName.includes('FINO') || laborName.includes('ESTANDAR')) {
+          qty = totalEdge04Length
+        } else {
+          const hasOtherThick = formData.laborCosts.some(other => {
+            const otherLabor = laborCosts.find(item => item.id === other.idLaborCost)
+            const otherName = otherLabor?.name?.toUpperCase() || ''
+            return otherName !== laborName && (otherName.includes('2') || otherName.includes('ANCHO') || otherName.includes('GRUESO'))
+          })
+          qty = hasOtherThick ? totalEdge04Length : (totalEdge04Length + totalEdge2Length)
+        }
+      } else if (laborName.includes('CORTE')) {
         qty = totalPiecesCount
       }
       
@@ -369,8 +387,20 @@ export function FurnitureClient({ initialItems, parts, extraParts, costs, laborC
         if (labor) {
           const laborName = labor.name.toUpperCase()
           if (laborName.includes('FILO') || laborName.includes('PEGADO')) {
-            const roundedQty = Number(totalEdgeLength.toFixed(2))
-            if (l.quantity !== roundedQty) return { ...l, quantity: roundedQty }
+            let targetQty = 0
+            if (laborName.includes('2') || laborName.includes('ANCHO') || laborName.includes('GRUESO')) {
+              targetQty = Number(totalEdge2Length.toFixed(2))
+            } else if (laborName.includes('0.4') || laborName.includes('FINO') || laborName.includes('ESTANDAR')) {
+              targetQty = Number(totalEdge04Length.toFixed(2))
+            } else {
+              const hasOtherThick = prev.laborCosts.some(other => {
+                const otherLabor = laborCosts.find(item => item.id === other.idLaborCost)
+                const otherName = otherLabor?.name?.toUpperCase() || ''
+                return otherName !== laborName && (otherName.includes('2') || otherName.includes('ANCHO') || otherName.includes('GRUESO'))
+              })
+              targetQty = hasOtherThick ? Number(totalEdge04Length.toFixed(2)) : Number((totalEdge04Length + totalEdge2Length).toFixed(2))
+            }
+            if (l.quantity !== targetQty) return { ...l, quantity: targetQty }
           } else if (laborName.includes('CORTE')) {
             if (l.quantity !== totalPiecesCount) return { ...l, quantity: totalPiecesCount }
           }
