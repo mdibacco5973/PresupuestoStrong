@@ -242,7 +242,7 @@ export function PartsClient({ initialParts }: PartsClientProps) {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="formulaLength">Fórmula Longitud (L)</Label>
+                  <Label htmlFor="formulaLength">Fórmula Alto (L)</Label>
                   <Input
                     id="formulaLength"
                     placeholder="Ej: L - 20"
