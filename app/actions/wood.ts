@@ -38,7 +38,7 @@ export async function createWood(data: WoodInput) {
     const wood = await prisma.$transaction(async (tx) => {
       if (data.isDefaultWood) {
         await tx.wood.updateMany({
-          where: { 
+          where: {
             isDefaultWood: true,
             isBack: data.isBack
           },
@@ -80,10 +80,10 @@ export async function updateWood(id: number | string, data: WoodInput) {
     const wood = await prisma.$transaction(async (tx) => {
       if (data.isDefaultWood) {
         await tx.wood.updateMany({
-          where: { 
+          where: {
             isDefaultWood: true,
             isBack: data.isBack,
-            id: { not: BigInt(id) } 
+            id: { not: BigInt(id) }
           },
           data: { isDefaultWood: false },
         })

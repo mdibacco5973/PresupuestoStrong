@@ -288,14 +288,14 @@ export async function createQuote(data: QuoteInput) {
           depth: detail.depth,
         }))
       },
-        additionalCosts: {
-          create: (data.additionalCosts || []).map(c => ({
-            additionalCost: c.additionalCostId ? { connect: { id: BigInt(c.additionalCostId) } } : undefined,
-            furniture: c.furnitureId ? { connect: { id: BigInt(c.furnitureId) } } : undefined,
-            quantity: c.quantity,
-            totalPrice: c.totalPrice,
-          }))
-        },
+      additionalCosts: {
+        create: (data.additionalCosts || []).map(c => ({
+          additionalCost: c.additionalCostId ? { connect: { id: BigInt(c.additionalCostId) } } : undefined,
+          furniture: c.furnitureId ? { connect: { id: BigInt(c.furnitureId) } } : undefined,
+          quantity: c.quantity,
+          totalPrice: c.totalPrice,
+        }))
+      },
       woods: {
         create: (data.woods || []).map(w => ({
           wood: { connect: { id: BigInt(w.woodId) } },
@@ -346,13 +346,13 @@ export async function createQuote(data: QuoteInput) {
       }
     },
     include: {
-        details: { include: { furniture: true } },
-        additionalCosts: true,
-        parts: true,
-        hardware: true,
-        finishes: true,
-        labor: true,
-        woods: true
+      details: { include: { furniture: true } },
+      additionalCosts: true,
+      parts: true,
+      hardware: true,
+      finishes: true,
+      labor: true,
+      woods: true
     }
   })
   revalidatePath('/quotes')
@@ -361,7 +361,7 @@ export async function createQuote(data: QuoteInput) {
 
 export async function updateQuote(id: string, data: QuoteInput) {
   const quoteId = BigInt(id)
-  
+
   const updated = await prisma.$transaction(async (tx) => {
     // Delete existing details
     await tx.quoteDetail.deleteMany({ where: { quoteId: quoteId } })
@@ -467,6 +467,9 @@ export async function updateQuote(id: string, data: QuoteInput) {
         woods: true
       }
     })
+  }, {
+    timeout: 15000,
+    maxWait: 5000,
   })
 
   revalidatePath('/quotes')
@@ -562,7 +565,7 @@ export async function generateCutsExcel(id: string) {
 
   // 1. Group parts by wood
   const partsByWood = new Map<string, any[]>()
-  
+
   quote.details.forEach((detail: any) => {
     const furniture = furnitures.find(f => f.id.toString() === detail.furnitureId.toString())
     if (!furniture || !furniture.parts) return
@@ -571,14 +574,14 @@ export async function generateCutsExcel(id: string) {
       const partDef = p.part
       if (!partDef) return
 
-      const assignment = quote.parts.find((qp: any) => 
-        qp.furnitureId?.toString() === detail.furnitureId.toString() && 
+      const assignment = quote.parts.find((qp: any) =>
+        qp.furnitureId?.toString() === detail.furnitureId.toString() &&
         qp.partId?.toString() === partDef.id.toString()
       )
-      
+
       const wood = woods.find(w => w.id?.toString() === assignment?.woodId?.toString()) || woods[0]
       const woodName = wood ? wood.name : 'Madera no definida'
-      
+
       if (!partsByWood.has(woodName)) {
         partsByWood.set(woodName, [])
       }
@@ -615,7 +618,7 @@ export async function generateCutsExcel(id: string) {
 
   const templateNumber = Math.min(woodCount, 5)
   const templatePath = path.join(process.cwd(), 'public', 'Templates', `Planilla${templateNumber}.xlsx`)
-  
+
   try {
     const templateData = await fs.readFile(templatePath)
     const workbook = await XlsxPopulate.fromDataAsync(templateData)
@@ -659,7 +662,7 @@ export async function generateStrongWord(id: string) {
 
   const woods = await prisma.wood.findMany()
   const templatePath = path.join(process.cwd(), 'public', 'Templates', 'PresupuestoStrong.docx')
-  
+
   try {
     const content = await fs.readFile(templatePath)
     const zip = new PizZip(content)
@@ -688,13 +691,13 @@ export async function generateStrongWord(id: string) {
       const assignedWoodIds = quote.parts
         .filter((p: any) => p.furnitureId?.toString() === detail.furnitureId?.toString())
         .map((p: any) => p.woodId?.toString())
-      
+
       const uniqueWoodIds = Array.from(new Set(assignedWoodIds))
       const usedWoods = uniqueWoodIds
         .map(id => woods.find(w => w.id?.toString() === id)?.name)
         .filter(Boolean)
         .join(', ')
-      
+
       return `${furnitureName}${usedWoods ? ` (${usedWoods})` : ''}`
     }).join('\n')
 

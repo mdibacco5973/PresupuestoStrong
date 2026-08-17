@@ -297,6 +297,9 @@ export async function updateFurniture(id: string | number, data: FurnitureInput)
           additionalCosts: true,
         }
       })
+    }, {
+      timeout: 15000,
+      maxWait: 5000,
     })
 
     revalidatePath('/furniture')
